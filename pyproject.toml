@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["I"]   # enable isort-style import sorting rules
+
+[tool.ruff.lint.isort]
+known-first-party = ["binctl"]
+combine-as-imports = true

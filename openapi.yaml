@@ -1,0 +1,286 @@
+openapi: 3.0.3
+info:
+  title: Home Storage API
+  version: "1.0.0"
+servers:
+  - url: /
+
+paths:
+  /v1/nodes:
+    get:
+      operationId: routes.get_nodes_list
+      tags: [nodes]
+      summary: List all nodes
+      responses:
+        "200":
+          description: List of nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Node"
+
+  /v1/node:
+    post:
+      operationId: routes.post_node_create
+      tags: [nodes]
+      summary: Create a new node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeCreate"
+      responses:
+        "201":
+          description: Node created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+
+  /v1/node/{node_id}:
+    parameters:
+      - in: path
+        name: node_id
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      operationId: routes.get_node_detail
+      tags: [nodes]
+      summary: Get a node by ID
+      responses:
+        "200":
+          description: Node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "404":
+          description: Node not found
+    post:
+      operationId: routes.post_node_update
+      tags: [nodes]
+      summary: Update an existing node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeUpdate"
+      responses:
+        "200":
+          description: Node updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "404":
+          description: Node not found
+
+  /v1/tags:
+    get:
+      operationId: routes.get_tags_list
+      tags: [tags]
+      summary: List all tags
+      responses:
+        "200":
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tag"
+
+  /v1/tag:
+    post:
+      operationId: routes.post_tag_create
+      tags: [tags]
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagCreate"
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+
+  /v1/tag/{tag_id}:
+    parameters:
+      - in: path
+        name: tag_id
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      operationId: routes.get_tag_detail
+      tags: [tags]
+      summary: Get tag by ID
+      responses:
+        "200":
+          description: Tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "404":
+          description: Tag not found
+    post:
+      operationId: routes.post_tag_update
+      tags: [tags]
+      summary: Update a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagUpdate"
+      responses:
+        "200":
+          description: Tag updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "404":
+          description: Tag not found
+
+components:
+  schemas:
+
+    NodeCreate:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_container:
+          type: boolean
+          default: false
+        parent_id:
+          type: integer
+          format: int64
+          nullable: true
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+          default: []
+
+    NodeUpdate:
+      type: object
+      properties:
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_container:
+          type: boolean
+        parent_id:
+          type: integer
+          format: int64
+          nullable: true
+        tag_ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+
+    Node:
+      type: object
+      required: [id, label, created_at, updated_at, is_container]
+      properties:
+        id:
+          type: integer
+          format: int64
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_container:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        parent_id:
+          type: integer
+          format: int64
+          nullable: true
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/NodeChild"
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
+
+    NodeChild:
+      type: object
+      required: [id, label, is_container, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        label:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_container:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TagCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    TagUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+
+    Tag:
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
