@@ -2,7 +2,7 @@ from flask import jsonify, request
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from .db import (
+from db import (
     ensure_parent_is_valid,
     fetch_children,
     fetch_node,
@@ -14,7 +14,7 @@ from .db import (
     replace_node_tags,
     set_parent,
 )
-from .web import error
+from web import error
 
 
 # Tag endpoints

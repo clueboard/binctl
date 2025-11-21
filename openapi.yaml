@@ -7,8 +7,8 @@ servers:
 
 paths:
   /v1/nodes:
-    x-openapi-router-controller: routes
     get:
+      x-openapi-router-controller: routes
       operationId: get_nodes_list
       tags: [nodes]
       summary: List all nodes
@@ -23,8 +23,8 @@ paths:
                   $ref: "#/components/schemas/Node"
 
   /v1/node:
-    x-openapi-router-controller: routes
     post:
+      x-openapi-router-controller: routes
       operationId: post_node_create
       tags: [nodes]
       summary: Create a new node
@@ -50,8 +50,8 @@ paths:
         schema:
           type: integer
           format: int64
-    x-openapi-router-controller: routes
     get:
+      x-openapi-router-controller: routes
       operationId: get_node_detail
       tags: [nodes]
       summary: Get a node by ID
@@ -65,6 +65,7 @@ paths:
         "404":
           description: Node not found
     post:
+      x-openapi-router-controller: routes
       operationId: post_node_update
       tags: [nodes]
       summary: Update an existing node
@@ -85,8 +86,8 @@ paths:
           description: Node not found
 
   /v1/tags:
-    x-openapi-router-controller: routes
     get:
+      x-openapi-router-controller: routes
       operationId: get_tags_list
       tags: [tags]
       summary: List all tags
@@ -101,8 +102,8 @@ paths:
                   $ref: "#/components/schemas/Tag"
 
   /v1/tag:
-    x-openapi-router-controller: routes
     post:
+      x-openapi-router-controller: routes
       operationId: post_tag_create
       tags: [tags]
       summary: Create a tag
@@ -128,8 +129,8 @@ paths:
         schema:
           type: integer
           format: int64
-    x-openapi-router-controller: routes
     get:
+      x-openapi-router-controller: routes
       operationId: get_tag_detail
       tags: [tags]
       summary: Get tag by ID
@@ -143,6 +144,7 @@ paths:
         "404":
           description: Tag not found
     post:
+      x-openapi-router-controller: routes
       operationId: post_tag_update
       tags: [tags]
       summary: Update a tag
