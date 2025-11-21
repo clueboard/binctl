@@ -1,14 +1,15 @@
 openapi: 3.0.3
 info:
-  title: Home Storage API
+  title: binctl
   version: "1.0.0"
 servers:
   - url: /
 
 paths:
   /v1/nodes:
+    x-openapi-router-controller: routes
     get:
-      operationId: routes.get_nodes_list
+      operationId: get_nodes_list
       tags: [nodes]
       summary: List all nodes
       responses:
@@ -22,8 +23,9 @@ paths:
                   $ref: "#/components/schemas/Node"
 
   /v1/node:
+    x-openapi-router-controller: routes
     post:
-      operationId: routes.post_node_create
+      operationId: post_node_create
       tags: [nodes]
       summary: Create a new node
       requestBody:
@@ -48,8 +50,9 @@ paths:
         schema:
           type: integer
           format: int64
+    x-openapi-router-controller: routes
     get:
-      operationId: routes.get_node_detail
+      operationId: get_node_detail
       tags: [nodes]
       summary: Get a node by ID
       responses:
@@ -62,7 +65,7 @@ paths:
         "404":
           description: Node not found
     post:
-      operationId: routes.post_node_update
+      operationId: post_node_update
       tags: [nodes]
       summary: Update an existing node
       requestBody:
@@ -82,8 +85,9 @@ paths:
           description: Node not found
 
   /v1/tags:
+    x-openapi-router-controller: routes
     get:
-      operationId: routes.get_tags_list
+      operationId: get_tags_list
       tags: [tags]
       summary: List all tags
       responses:
@@ -97,8 +101,9 @@ paths:
                   $ref: "#/components/schemas/Tag"
 
   /v1/tag:
+    x-openapi-router-controller: routes
     post:
-      operationId: routes.post_tag_create
+      operationId: post_tag_create
       tags: [tags]
       summary: Create a tag
       requestBody:
@@ -123,8 +128,9 @@ paths:
         schema:
           type: integer
           format: int64
+    x-openapi-router-controller: routes
     get:
-      operationId: routes.get_tag_detail
+      operationId: get_tag_detail
       tags: [tags]
       summary: Get tag by ID
       responses:
@@ -137,7 +143,7 @@ paths:
         "404":
           description: Tag not found
     post:
-      operationId: routes.post_tag_update
+      operationId: post_tag_update
       tags: [tags]
       summary: Update a tag
       requestBody:

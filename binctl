@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""binctl: CLI client for the binctl API.
+
+PYTHON_ARGCOMPLETE_OK
+"""
+
+import json
+
+from binctl_client import Client
+from binctl_client.api.nodes import (
+    get_node_detail,
+    get_nodes_list,
+    post_node_create,
+    post_node_update,
+)
+from binctl_client.api.tags import (
+    get_tag_detail,
+    get_tags_list,
+    post_tag_create,
+    post_tag_update,
+)
+from binctl_client.models import NodeCreate, NodeUpdate, TagCreate, TagUpdate
+from milc import cli
+
+
+def _get_client(cli) -> Client:
+    """Construct an API client from config/args."""
+    base_url = cli.config.general.base_url
+    # openapi-python-client Client usually takes base_url and optional headers/cookies
+    return Client(base_url=base_url)
+
+
+def _echo_json(cli, data):
+    cli.echo(json.dumps(data, indent=4, sort_keys=True))
+
+
+# ---------------------------------------------------------------------------
+# Entry point + global options
+# ---------------------------------------------------------------------------
+
+
+@cli.argument(
+    '--base-url',
+    default='http://localhost:5000',
+    help='Base URL for the binctl API (e.g. http://localhost:5000)',
+)
+@cli.entrypoint('binctl: manage storage nodes and tags.')
+def main(cli):
+    """Top-level entrypoint. If no subcommand is given, show help."""
+    # If the user runs just `binctl`, print usage.
+    cli.print_usage()
+
+
+# ---------------------------------------------------------------------------
+# Nodes subcommands
+# ---------------------------------------------------------------------------
+
+
+@cli.subcommand('List all nodes.')
+def nodes_list(cli):
+    """binctl nodes_list"""
+    client = _get_client(cli)
+    nodes = get_nodes_list.sync(client=client)
+    # `nodes` is likely a list of model objects; convert to dicts if needed.
+    data = [n.to_dict() if hasattr(n, 'to_dict') else n for n in nodes]
+    _echo_json(cli, data)
+
+
+@cli.argument('node_id', type=int, help='ID of the node to show')
+@cli.subcommand('Show details for a single node.')
+def nodes_get(cli):
+    """binctl nodes_get NODE_ID"""
+    client = _get_client(cli)
+    node_id = cli.args.node_id
+    node = get_node_detail.sync(client=client, node_id=node_id)
+    data = node.to_dict() if hasattr(node, 'to_dict') else node
+    _echo_json(cli, data)
+
+
+@cli.argument('--label', required=True, help='Label for the new node')
+@cli.argument('--description', help='Description for the node', default=None)
+@cli.argument(
+    '--is-container',
+    action='store_true',
+    default=False,
+    help='Mark this node as a container',
+)
+@cli.argument(
+    '--parent-id',
+    type=int,
+    default=None,
+    help='Optional parent node ID',
+)
+@cli.argument(
+    '--tag-id',
+    type=int,
+    nargs='*',
+    default=[],
+    help='Optional tag IDs to attach',
+)
+@cli.subcommand('Create a new node.')
+def nodes_create(cli):
+    """binctl nodes_create --label LABEL [--description TEXT] [--is-container] [--parent-id ID] [--tag-id 1 2 ...]"""
+    client = _get_client(cli)
+
+    body = NodeCreate(
+        label=cli.args.label,
+        description=cli.args.description,
+        is_container=cli.args.is_container,
+        parent_id=cli.args.parent_id,
+        tag_ids=cli.args.tag_id or [],
+    )
+
+    node = post_node_create.sync(client=client, json_body=body)
+    data = node.to_dict() if hasattr(node, 'to_dict') else node
+    _echo_json(cli, data)
+
+
+@cli.argument('node_id', type=int, help='ID of the node to update')
+@cli.argument('--label', help='New label')
+@cli.argument('--description', help='New description')
+@cli.argument(
+    '--is-container',
+    action='store_boolean',
+    help='Set or clear container flag (use --is-container or --no-is-container)',
+)
+@cli.argument(
+    '--parent-id',
+    type=int,
+    help="Set parent ID (use explicit null with --parent-id '' to clear if desired)",
+    default=None,
+)
+@cli.argument(
+    '--tag-id',
+    type=int,
+    nargs='*',
+    help='Replace node tags with this set of tag IDs',
+)
+@cli.subcommand('Update an existing node.')
+def nodes_update(cli):
+    """binctl nodes_update NODE_ID [options]"""
+    client = _get_client(cli)
+    node_id = cli.args.node_id
+
+    # Build a partial update body. Unspecified fields are left as None.
+    body_kwargs = {}
+
+    if cli.args.label is not None:
+        body_kwargs['label'] = cli.args.label
+    if cli.args.description is not None:
+        body_kwargs['description'] = cli.args.description
+    # is_container via store_boolean gives True/False/None
+    if cli.args.is_container is not None:
+        body_kwargs['is_container'] = cli.args.is_container
+    if 'parent_id' in cli.args and cli.args.parent_id is not None:
+        body_kwargs['parent_id'] = cli.args.parent_id
+    if cli.args.tag_id is not None:
+        body_kwargs['tag_ids'] = cli.args.tag_id
+
+    body = NodeUpdate(**body_kwargs)
+
+    node = post_node_update.sync(client=client, node_id=node_id, json_body=body)
+    data = node.to_dict() if hasattr(node, 'to_dict') else node
+    _echo_json(cli, data)
+
+
+# ---------------------------------------------------------------------------
+# Tags subcommands
+# ---------------------------------------------------------------------------
+
+
+@cli.subcommand('List all tags.')
+def tags_list(cli):
+    """binctl tags_list"""
+    client = _get_client(cli)
+    tags = get_tags_list.sync(client=client)
+    data = [t.to_dict() if hasattr(t, 'to_dict') else t for t in tags]
+    _echo_json(cli, data)
+
+
+@cli.argument('tag_id', type=int, help='ID of the tag to show')
+@cli.subcommand('Show details for a single tag.')
+def tags_get(cli):
+    """binctl tags_get TAG_ID"""
+    client = _get_client(cli)
+    tag_id = cli.args.tag_id
+    tag = get_tag_detail.sync(client=client, tag_id=tag_id)
+    data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
+    _echo_json(cli, data)
+
+
+@cli.argument('--name', required=True, help='Name for the new tag')
+@cli.subcommand('Create a new tag.')
+def tags_create(cli):
+    """binctl tags_create --name NAME"""
+    client = _get_client(cli)
+    body = TagCreate(name=cli.args.name)
+    tag = post_tag_create.sync(client=client, json_body=body)
+    data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
+    _echo_json(cli, data)
+
+
+@cli.argument('tag_id', type=int, help='ID of the tag to update')
+@cli.argument('--name', required=True, help='New tag name')
+@cli.subcommand('Update an existing tag.')
+def tags_update(cli):
+    """binctl tags_update TAG_ID --name NAME"""
+    client = _get_client(cli)
+    tag_id = cli.args.tag_id
+    body = TagUpdate(name=cli.args.name)
+    tag = post_tag_update.sync(client=client, tag_id=tag_id, json_body=body)
+    data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
+    _echo_json(cli, data)
+
+
+if __name__ == '__main__':
+    cli()
