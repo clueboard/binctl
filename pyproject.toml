@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "Storage node and tag management server + CLI"
 requires-python = ">=3.10"
 dependencies = [
-    "a2wsgi",
     "binctl-client",
+    "uvicorn>=0.30",
     "connexion[flask]>=3.3",
     "flask-cors>=4.0",
     "gunicorn>=21.0",

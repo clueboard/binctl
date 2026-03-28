@@ -1,2 +1,2 @@
 #!/bin/sh
-flask -A web:create_app --debug run
+uvicorn 'web:create_app' --factory --reload
