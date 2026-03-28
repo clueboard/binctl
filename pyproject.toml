@@ -26,10 +26,9 @@ py-modules = ["binctl", "web", "routes", "db"]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.0",
+    "ty>=0.0.1a1",
     "pytest>=8.0",
     "ruff>=0.5",
-    "types-sqlalchemy",
 ]
 
 [tool.uv.sources]
@@ -52,5 +51,3 @@ combine-as-imports = true
 testpaths = ["."]
 python_files = ["test_*.py"]
 
-[tool.mypy]
-ignore_missing_imports = true

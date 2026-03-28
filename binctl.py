@@ -58,7 +58,7 @@ def main(cli):
 
 def _node_list(cli):
     client = _get_client(cli)
-    nodes = get_nodes_list.sync(client=client)
+    nodes = get_nodes_list.sync(client=client) or []
     # `nodes` is likely a list of model objects; convert to dicts if needed.
     data = [n.to_dict() if hasattr(n, 'to_dict') else n for n in nodes]
     _echo_json(cli, data)
@@ -99,7 +99,7 @@ def _node_update(cli, node_id: int):
     # is_container via store_boolean gives True/False/None
     if cli.args.is_container is not None:
         body_kwargs['is_container'] = cli.args.is_container
-    if 'parent_id' in cli.args and cli.args.parent_id is not None:
+    if hasattr(cli.args, 'parent_id') and cli.args.parent_id is not None:
         body_kwargs['parent_id'] = cli.args.parent_id
     if cli.args.tag_id is not None:
         body_kwargs['tag_ids'] = cli.args.tag_id
@@ -118,7 +118,7 @@ def _node_update(cli, node_id: int):
 
 def _tag_list(cli):
     client = _get_client(cli)
-    tags = get_tags_list.sync(client=client)
+    tags = get_tags_list.sync(client=client) or []
     data = [t.to_dict() if hasattr(t, 'to_dict') else t for t in tags]
     _echo_json(cli, data)
 

@@ -7,7 +7,7 @@ def create_app():
     # App setup
     cx_app = connexion.App(__name__, specification_dir='.')
     cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=False)
-    cx_app.app.wsgi_app = ASGIMiddleware(cx_app.middleware)
+    cx_app.app.wsgi_app = ASGIMiddleware(cx_app.middleware)  # ty: ignore[invalid-argument-type, invalid-assignment]
 
     # App teardown
     cx_app.app.teardown_appcontext(close_db)
