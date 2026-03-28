@@ -1,3 +1,40 @@
+[project]
+name = "binctl"
+version = "0.1.0"
+description = "Storage node and tag management server + CLI"
+requires-python = ">=3.10"
+dependencies = [
+    "a2wsgi",
+    "binctl-client",
+    "connexion[flask]>=3.3",
+    "flask-cors>=4.0",
+    "gunicorn>=21.0",
+    "milc",
+    "mysql-connector-python>=8.0",
+    "sqlalchemy>=2.0",
+]
+
+[project.scripts]
+binctl = "binctl:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["binctl", "web", "routes", "db"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.0",
+    "pytest>=8.0",
+    "ruff>=0.5",
+    "types-sqlalchemy",
+]
+
+[tool.uv.sources]
+binctl-client = { path = "binctl-client", editable = true }
+
 [tool.ruff]
 line-length = 120
 
@@ -10,3 +47,10 @@ select = ["I"]   # enable isort-style import sorting rules
 [tool.ruff.lint.isort]
 known-first-party = ["binctl"]
 combine-as-imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]
+
+[tool.mypy]
+ignore_missing_imports = true

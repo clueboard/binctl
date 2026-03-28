@@ -82,7 +82,7 @@ def _node_create(cli):
         tag_ids=cli.args.tag_id or [],
     )
 
-    node = post_node_create.sync(client=client, json_body=body)
+    node = post_node_create.sync(client=client, body=body)
     data = node.to_dict() if hasattr(node, 'to_dict') else node
     _echo_json(cli, data)
 
@@ -106,7 +106,7 @@ def _node_update(cli, node_id: int):
 
     body = NodeUpdate(**body_kwargs)
 
-    node = post_node_update.sync(client=client, node_id=node_id, json_body=body)
+    node = post_node_update.sync(client=client, node_id=node_id, body=body)
     data = node.to_dict() if hasattr(node, 'to_dict') else node
     _echo_json(cli, data)
 
@@ -133,7 +133,7 @@ def _tag_get(cli, tag_id: int):
 def _tag_create(cli):
     client = _get_client(cli)
     body = TagCreate(name=cli.args.name)
-    tag = post_tag_create.sync(client=client, json_body=body)
+    tag = post_tag_create.sync(client=client, body=body)
     data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
     _echo_json(cli, data)
 
@@ -141,7 +141,7 @@ def _tag_create(cli):
 def _tag_update(cli, tag_id: int):
     client = _get_client(cli)
     body = TagUpdate(name=cli.args.name)
-    tag = post_tag_update.sync(client=client, tag_id=tag_id, json_body=body)
+    tag = post_tag_update.sync(client=client, tag_id=tag_id, body=body)
     data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
     _echo_json(cli, data)
 
