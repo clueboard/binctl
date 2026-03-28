@@ -14,6 +14,7 @@ def _make_cli_args(**kwargs):
         'description': None,
         'is_container': None,
         'parent_id': None,
+        'no_parent': False,
         'tag_id': None,
         'name': None,
         'node_id': None,
@@ -85,6 +86,22 @@ class TestTagUpdate(unittest.TestCase):
             _, kwargs = mock_sync.call_args
             self.assertIn('body', kwargs)
             self.assertNotIn('json_body', kwargs)
+
+
+class TestNodeDetach(unittest.TestCase):
+    def test_no_parent_sends_null_parent_id(self):
+        """--no-parent must include parent_id=None in the body, not omit it."""
+        with patch('binctl_client.api.nodes.post_node_update.sync') as mock_sync:
+            mock_sync.return_value = None
+            import binctl as bc
+
+            cli = _make_cli(_make_cli_args(node_id=1, no_parent=True))
+            bc._node_update(cli, node_id=1)
+
+            _, kwargs = mock_sync.call_args
+            body = kwargs['body']
+            assert hasattr(body, 'parent_id'), 'body missing parent_id attribute'
+            assert body.parent_id is None, f'Expected parent_id=None, got {body.parent_id!r}'
 
 
 if __name__ == '__main__':

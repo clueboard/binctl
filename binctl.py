@@ -99,8 +99,10 @@ def _node_update(cli, node_id: int):
     # is_container via store_boolean gives True/False/None
     if cli.args.is_container is not None:
         body_kwargs['is_container'] = cli.args.is_container
-    if hasattr(cli.args, 'parent_id') and cli.args.parent_id is not None:
+    if cli.args.parent_id is not None:
         body_kwargs['parent_id'] = cli.args.parent_id
+    elif cli.args.no_parent:
+        body_kwargs['parent_id'] = None
     if cli.args.tag_id is not None:
         body_kwargs['tag_ids'] = cli.args.tag_id
 
@@ -165,6 +167,7 @@ def _tag_update(cli, tag_id: int):
     help='Set container flag (create defaults to False)',
 )
 @cli.argument('--parent-id', type=int, default=None, help='Parent node ID')
+@cli.argument('--no-parent', action='store_true', default=False, help='Detach node from its parent')
 @cli.argument('--tag-id', type=int, nargs='*', help='Tag IDs to attach/replace')
 @cli.subcommand('Node operations: list, get, create, update.')
 def node(cli):
@@ -193,7 +196,7 @@ def node(cli):
         if cli.args.node_id is None:
             cli.log.error('node update requires --node-id')
             raise SystemExit(1)
-        if all(
+        if not cli.args.no_parent and all(
             value is None
             for value in (
                 cli.args.label,
