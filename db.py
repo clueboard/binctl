@@ -8,10 +8,11 @@ from web import error
 # Configuration
 DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+mysqlconnector://user:password@localhost:3306/storage_db')
 
+engine = create_engine(DATABASE_URL, future=True)
+
 
 def get_db():
     if 'db' not in g:
-        engine = create_engine(DATABASE_URL, future=True)
         g.db = engine.connect()
 
     return g.db
