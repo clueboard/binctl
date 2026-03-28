@@ -141,22 +141,22 @@ def post_tag_update(tag_id):
     if not name:
         return error(400, 'Missing required field: name')
 
-    result = db.execute(
-        text(
-            """
-            UPDATE tags
-            SET name = :name
-            WHERE id = :id
-            """
-        ),
-        {'name': name, 'id': tag_id},
-    )
-
-    if result.rowcount == 0:
-        db.rollback()
-        return error(404, 'Tag not found')
-
     try:
+        result = db.execute(
+            text(
+                """
+                UPDATE tags
+                SET name = :name
+                WHERE id = :id
+                """
+            ),
+            {'name': name, 'id': tag_id},
+        )
+
+        if result.rowcount == 0:
+            db.rollback()
+            return error(404, 'Tag not found')
+
         db.commit()
 
     except IntegrityError:
