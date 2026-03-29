@@ -48,7 +48,7 @@ class TestNodeCreate(unittest.TestCase):
 
 class TestNodeUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
-        with patch('binctl_client.api.nodes.post_node_update.sync') as mock_sync:
+        with patch('binctl_client.api.nodes.patch_node_update.sync') as mock_sync:
             mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
             import binctl as bc
 
@@ -76,7 +76,7 @@ class TestTagCreate(unittest.TestCase):
 
 class TestTagUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
-        with patch('binctl_client.api.tags.post_tag_update.sync') as mock_sync:
+        with patch('binctl_client.api.tags.patch_tag_update.sync') as mock_sync:
             mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
             import binctl as bc
 
@@ -91,7 +91,7 @@ class TestTagUpdate(unittest.TestCase):
 class TestNodeDetach(unittest.TestCase):
     def test_no_parent_sends_null_parent_id(self):
         """--no-parent must include parent_id=None in the body, not omit it."""
-        with patch('binctl_client.api.nodes.post_node_update.sync') as mock_sync:
+        with patch('binctl_client.api.nodes.patch_node_update.sync') as mock_sync:
             mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
             import binctl as bc
 

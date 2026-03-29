@@ -133,7 +133,7 @@ def post_tag_create():
     return resp
 
 
-def post_tag_update(tag_id):
+def patch_tag_update(tag_id):
     db = get_db()
     data = request.get_json(silent=True) or {}
     name = data.get('name')
@@ -289,7 +289,7 @@ def post_node_create():
     return resp
 
 
-def post_node_update(node_id):
+def patch_node_update(node_id):
     db = get_db()
     data = request.get_json(silent=True) or {}
     row = fetch_node(node_id)

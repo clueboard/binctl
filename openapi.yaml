@@ -21,8 +21,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Node"
-
-  /v1/node:
     post:
       x-openapi-router-controller: routes
       operationId: post_node_create
@@ -42,7 +40,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Node"
 
-  /v1/node/{node_id}:
+  /v1/nodes/{node_id}:
     parameters:
       - in: path
         name: node_id
@@ -64,9 +62,9 @@ paths:
                 $ref: "#/components/schemas/Node"
         "404":
           description: Node not found
-    post:
+    patch:
       x-openapi-router-controller: routes
-      operationId: post_node_update
+      operationId: patch_node_update
       tags: [nodes]
       summary: Update an existing node
       requestBody:
@@ -100,8 +98,6 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Tag"
-
-  /v1/tag:
     post:
       x-openapi-router-controller: routes
       operationId: post_tag_create
@@ -121,7 +117,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Tag"
 
-  /v1/tag/{tag_id}:
+  /v1/tags/{tag_id}:
     parameters:
       - in: path
         name: tag_id
@@ -143,9 +139,9 @@ paths:
                 $ref: "#/components/schemas/Tag"
         "404":
           description: Tag not found
-    post:
+    patch:
       x-openapi-router-controller: routes
-      operationId: post_tag_update
+      operationId: patch_tag_update
       tags: [tags]
       summary: Update a tag
       requestBody:

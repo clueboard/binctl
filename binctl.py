@@ -10,14 +10,14 @@ from binctl_client import Client
 from binctl_client.api.nodes import (
     get_node_detail,
     get_nodes_list,
+    patch_node_update,
     post_node_create,
-    post_node_update,
 )
 from binctl_client.api.tags import (
     get_tag_detail,
     get_tags_list,
+    patch_tag_update,
     post_tag_create,
-    post_tag_update,
 )
 from binctl_client.models import NodeCreate, NodeUpdate, TagCreate, TagUpdate
 from milc import cli
@@ -117,7 +117,7 @@ def _node_update(cli, node_id: int):
 
     body = NodeUpdate(**body_kwargs)
 
-    node = post_node_update.sync(client=client, node_id=node_id, body=body)
+    node = patch_node_update.sync(client=client, node_id=node_id, body=body)
     _check_response(node, f'node {node_id}')
     data = node.to_dict() if hasattr(node, 'to_dict') else node
     _echo_json(cli, data)
@@ -155,7 +155,7 @@ def _tag_create(cli):
 def _tag_update(cli, tag_id: int):
     client = _get_client(cli)
     body = TagUpdate(name=cli.args.name)
-    tag = post_tag_update.sync(client=client, tag_id=tag_id, body=body)
+    tag = patch_tag_update.sync(client=client, tag_id=tag_id, body=body)
     _check_response(tag, f'tag {tag_id}')
     data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
     _echo_json(cli, data)
