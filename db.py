@@ -153,20 +153,6 @@ def set_parent(node_id, parent_id):
 def replace_node_tags(node_id, tag_ids):
     db = get_db()
 
-    # Ensure all tags exist
-    if tag_ids:
-        stmt = text(
-            """
-            SELECT id FROM tags
-            WHERE id IN :ids
-            """
-        )
-        existing = db.execute(stmt, {'ids': tuple(tag_ids)}).scalars().all()
-        missing = set(tag_ids) - set(existing)
-
-        if missing:
-            raise ValueError(f'Unknown tag_ids: {sorted(missing)}')
-
     # Delete tags not in new set
     if tag_ids:
         db.execute(
