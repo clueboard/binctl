@@ -174,17 +174,16 @@ def replace_node_tags(node_id, tag_ids):
 
     # Insert missing associations
     if tag_ids:
-        for tid in set(tag_ids):
-            db.execute(
-                text(
-                    """
-                    INSERT INTO tag_node (tag_id, node_id)
-                    VALUES (:tag_id, :node_id)
-                    ON DUPLICATE KEY UPDATE created_at = created_at
-                    """
-                ),
-                {'tag_id': tid, 'node_id': node_id},
-            )
+        db.execute(
+            text(
+                """
+                INSERT INTO tag_node (tag_id, node_id)
+                VALUES (:tag_id, :node_id)
+                ON DUPLICATE KEY UPDATE created_at = created_at
+                """
+            ),
+            [{'tag_id': tid, 'node_id': node_id} for tid in set(tag_ids)],
+        )
 
 
 def node_row_to_dict(row):
