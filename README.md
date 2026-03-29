@@ -7,19 +7,12 @@ Instead of thinking in terms of "SKUs" and "stock levels", `binctl` models your 
 - **nodes** - items, bins, shelves, rooms, etc.
 - **edges** - "this thing lives inside that thing".
 
-It's backed by a Flask API with a CLI frontend, so you can:
-
-- create nodes for items and containers
-- move things between containers
-- locate any item by walking the container tree
-- generate labels for bins/items for barcode/Qr usage
+It's backed by a Flask API with a CLI frontend.
 
 Current CLI subcommands:
 
-- `binctl create` - create items and containers
-- `binctl move`   - move a node under a new parent
-- `binctl locate` - show where something lives
-- `binctl label`  - generate label data for a node
+- `binctl node list|get|create|update` - manage nodes
+- `binctl tag list|get|create|update`  - manage tags
 
 ---
 
@@ -58,4 +51,4 @@ This gives you a **forest of trees**:
 
 Tags are stored in `tags` + `tag_node` for future filtering and categorization.
 
-The initial CLI focuses on the core graph operations; tagging is wired into the schema and ready to be exposed later.
+Tags are exposed via `binctl tag list|get|create|update`.
