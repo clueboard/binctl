@@ -34,6 +34,13 @@ def _echo_json(cli, data):
     cli.echo(json.dumps(data, indent=4, sort_keys=True))
 
 
+def _check_response(result, label: str):
+    """Exit with an error if the API returned None (server returned an error status)."""
+    if result is None:
+        cli.log.error('%s: server returned an error (resource not found or unexpected status)', label)
+        raise SystemExit(1)
+
+
 # ---------------------------------------------------------------------------
 # Entry point + global options
 # ---------------------------------------------------------------------------
@@ -67,6 +74,7 @@ def _node_list(cli):
 def _node_get(cli, node_id: int):
     client = _get_client(cli)
     node = get_node_detail.sync(client=client, node_id=node_id)
+    _check_response(node, f'node {node_id}')
     data = node.to_dict() if hasattr(node, 'to_dict') else node
     _echo_json(cli, data)
 
@@ -83,6 +91,7 @@ def _node_create(cli):
     )
 
     node = post_node_create.sync(client=client, body=body)
+    _check_response(node, 'node create')
     data = node.to_dict() if hasattr(node, 'to_dict') else node
     _echo_json(cli, data)
 
@@ -109,6 +118,7 @@ def _node_update(cli, node_id: int):
     body = NodeUpdate(**body_kwargs)
 
     node = post_node_update.sync(client=client, node_id=node_id, body=body)
+    _check_response(node, f'node {node_id}')
     data = node.to_dict() if hasattr(node, 'to_dict') else node
     _echo_json(cli, data)
 
@@ -128,6 +138,7 @@ def _tag_list(cli):
 def _tag_get(cli, tag_id: int):
     client = _get_client(cli)
     tag = get_tag_detail.sync(client=client, tag_id=tag_id)
+    _check_response(tag, f'tag {tag_id}')
     data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
     _echo_json(cli, data)
 
@@ -136,6 +147,7 @@ def _tag_create(cli):
     client = _get_client(cli)
     body = TagCreate(name=cli.args.name)
     tag = post_tag_create.sync(client=client, body=body)
+    _check_response(tag, 'tag create')
     data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
     _echo_json(cli, data)
 
@@ -144,6 +156,7 @@ def _tag_update(cli, tag_id: int):
     client = _get_client(cli)
     body = TagUpdate(name=cli.args.name)
     tag = post_tag_update.sync(client=client, tag_id=tag_id, body=body)
+    _check_response(tag, f'tag {tag_id}')
     data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
     _echo_json(cli, data)
 
