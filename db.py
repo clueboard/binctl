@@ -10,7 +10,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
-
 # Configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:

@@ -6,7 +6,7 @@ import httpx
 from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.tag_page import TagPage
-from ...types import UNSET, Response, Unset
+from ...types import Response, Unset
 
 
 def _get_kwargs(

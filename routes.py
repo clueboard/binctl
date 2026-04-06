@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 
 from flask import Response, jsonify, request
-from werkzeug.exceptions import BadRequest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from werkzeug.exceptions import BadRequest
 
 from db import (
     ensure_parent_is_valid,
