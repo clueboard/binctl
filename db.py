@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
 
 from flask import g
-from sqlalchemy import Boolean, Column, MetaData, Table, create_engine, text
+from sqlalchemy import Boolean, Column, MetaData, Table, create_engine, text, update
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
@@ -217,3 +217,108 @@ def node_row_to_dict(row: RowMapping) -> dict:
         'created_at': iso(row['created_at']),
         'updated_at': iso(row['updated_at']),
     }
+
+
+# --------------------------------------------------------------------
+# Tag helpers
+# --------------------------------------------------------------------
+
+def tag_row_to_dict(row: RowMapping) -> dict:
+    return {
+        'id': row['id'],
+        'name': row['name'],
+        'created_at': iso(row['created_at']),
+        'updated_at': iso(row['updated_at']),
+    }
+
+
+def fetch_tag(tag_id: int) -> RowMapping | None:
+    db = get_db()
+    stmt = text(
+        """
+        SELECT id, name, created_at, updated_at
+        FROM tags
+        WHERE id = :id
+        """
+    )
+    return db.execute(stmt, {'id': tag_id}).mappings().first()
+
+
+def count_tags() -> int:
+    return get_db().execute(text('SELECT COUNT(*) FROM tags')).scalar()
+
+
+def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
+    stmt = text(
+        """
+        SELECT id, name, created_at, updated_at
+        FROM tags
+        ORDER BY name
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    return get_db().execute(stmt, {'limit': limit, 'offset': offset}).mappings().all()
+
+
+def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
+    stmt = text(
+        """
+        SELECT n.id, n.label, n.description, n.is_container,
+               n.created_at, n.updated_at
+        FROM tag_node tn
+        JOIN nodes n ON n.id = tn.node_id
+        WHERE tn.tag_id = :id
+        ORDER BY n.id
+        """
+    )
+    return get_db().execute(stmt, {'id': tag_id}).mappings().all()
+
+
+def create_tag(name: str) -> int:
+    result = get_db().execute(text('INSERT INTO tags (name) VALUES (:name)'), {'name': name})
+    return result.lastrowid
+
+
+def update_tag(tag_id: int, name: str) -> int:
+    result = get_db().execute(
+        text('UPDATE tags SET name = :name WHERE id = :id'),
+        {'name': name, 'id': tag_id},
+    )
+    return result.rowcount
+
+
+# --------------------------------------------------------------------
+# Node write helpers
+# --------------------------------------------------------------------
+
+def count_nodes() -> int:
+    return get_db().execute(text('SELECT COUNT(*) FROM nodes')).scalar()
+
+
+def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
+    stmt = text(
+        """
+        SELECT id, label, description, is_container, created_at, updated_at
+        FROM nodes
+        ORDER BY id
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    return get_db().execute(stmt, {'limit': limit, 'offset': offset}).mappings().all()
+
+
+def create_node(label: str, description: str | None, is_container: bool) -> int:
+    result = get_db().execute(
+        text(
+            """
+            INSERT INTO nodes (label, description, is_container)
+            VALUES (:label, :description, :is_container)
+            """
+        ),
+        {'label': label, 'description': description, 'is_container': is_container},
+    )
+    return result.lastrowid
+
+
+def update_node_fields(node_id: int, fields: dict) -> None:
+    get_db().execute(update(nodes_table).where(nodes_table.c.id == node_id).values(**fields))

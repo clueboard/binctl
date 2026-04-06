@@ -3,28 +3,34 @@ from __future__ import annotations
 import logging
 
 from flask import Response, jsonify, request
-from sqlalchemy import text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import BadRequest
 
 from db import (
+    count_nodes,
+    count_tags,
+    create_node,
+    create_tag,
     ensure_parent_is_valid,
     fetch_children,
     fetch_node,
+    fetch_nodes_for_tag,
+    fetch_nodes_page,
     fetch_parent_id,
+    fetch_tag,
     fetch_tags_for_node,
-    get_db,
-    iso,
+    fetch_tags_page,
     node_row_to_dict,
-    nodes_table,
     replace_node_tags,
     set_parent,
+    tag_row_to_dict,
     transactional,
+    update_node_fields,
+    update_tag,
 )
 from web import error
 
 logger = logging.getLogger(__name__)
-
 
 
 def _parse_json_body() -> dict:
@@ -37,7 +43,6 @@ def _parse_json_body() -> dict:
 
 # Tag endpoints
 def get_tags_list() -> Response:
-    db = get_db()
     try:
         limit = int(request.args.get('limit', 100))
         offset = int(request.args.get('offset', 0))
@@ -48,69 +53,29 @@ def get_tags_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total = db.execute(text('SELECT COUNT(*) FROM tags')).scalar()
-    stmt = text(
-        """
-        SELECT id, name, created_at, updated_at
-        FROM tags
-        ORDER BY name
-        LIMIT :limit OFFSET :offset
-        """
-    )
-    rows = db.execute(stmt, {'limit': limit, 'offset': offset}).mappings().all()
+    total = count_tags()
+    rows = fetch_tags_page(limit, offset)
 
     return jsonify(
         {
             'total': total,
             'limit': limit,
             'offset': offset,
-            'items': [
-                {
-                    'id': r['id'],
-                    'name': r['name'],
-                    'created_at': iso(r['created_at']),
-                    'updated_at': iso(r['updated_at']),
-                }
-                for r in rows
-            ],
+            'items': [tag_row_to_dict(r) for r in rows],
         }
     )
 
 
 def get_tag_detail(tag_id: int) -> Response:
-    db = get_db()
-    tag_stmt = text(
-        """
-        SELECT id, name, created_at, updated_at
-        FROM tags
-        WHERE id = :id
-        """
-    )
-    tag = db.execute(tag_stmt, {'id': tag_id}).mappings().first()
-
+    tag = fetch_tag(tag_id)
     if not tag:
         return error(404, 'Tag not found')
 
-    nodes_stmt = text(
-        """
-        -- tag_node is the join table linking tags to nodes (many-to-many)
-        -- join to nodes to retrieve full node fields for each association
-        SELECT n.id, n.label, n.description, n.is_container,
-               n.created_at, n.updated_at
-        FROM tag_node tn
-        JOIN nodes n ON n.id = tn.node_id
-        WHERE tn.tag_id = :id
-        ORDER BY n.id
-        """
-    )
-    nodes = db.execute(nodes_stmt, {'id': tag_id}).mappings().all()
+    nodes = fetch_nodes_for_tag(tag_id)
 
     return jsonify(
         {
-            'id': tag['id'],
-            'name': tag['name'],
-            'created_at': iso(tag['created_at']),
-            'updated_at': iso(tag['updated_at']),
+            **tag_row_to_dict(tag),
             'nodes': [node_row_to_dict(n) for n in nodes],
         }
     )
@@ -128,45 +93,15 @@ def post_tag_create() -> Response:
         return error(400, 'name must be 255 characters or fewer')
 
     try:
-        with transactional() as db:
-            result = db.execute(
-                text(
-                    """
-                    INSERT INTO tags (name)
-                    VALUES (:name)
-                    """
-                ),
-                {'name': name},
-            )
-            tag_id = result.lastrowid
-            tag = (
-                db.execute(
-                    text(
-                        """
-                    SELECT id, name, created_at, updated_at
-                    FROM tags
-                    WHERE id = :id
-                    """
-                    ),
-                    {'id': tag_id},
-                )
-                .mappings()
-                .first()
-            )
+        with transactional():
+            tag_id = create_tag(name)
+            tag = fetch_tag(tag_id)
     except IntegrityError:
         return error(409, f"Tag with name '{name}' already exists")
 
     assert tag is not None
-    resp = jsonify(
-        {
-            'id': tag['id'],
-            'name': tag['name'],
-            'created_at': iso(tag['created_at']),
-            'updated_at': iso(tag['updated_at']),
-        }
-    )
+    resp = jsonify(tag_row_to_dict(tag))
     resp.status_code = 201
-
     return resp
 
 
@@ -182,50 +117,20 @@ def patch_tag_update(tag_id: int) -> Response:
         return error(400, 'name must be 255 characters or fewer')
 
     try:
-        with transactional() as db:
-            result = db.execute(
-                text(
-                    """
-                    UPDATE tags
-                    SET name = :name
-                    WHERE id = :id
-                    """
-                ),
-                {'name': name, 'id': tag_id},
-            )
-            if result.rowcount == 0:
+        with transactional():
+            rowcount = update_tag(tag_id, name)
+            if rowcount == 0:
                 return error(404, 'Tag not found')
-            tag = (
-                db.execute(
-                    text(
-                        """
-                    SELECT id, name, created_at, updated_at
-                    FROM tags
-                    WHERE id = :id
-                    """
-                    ),
-                    {'id': tag_id},
-                )
-                .mappings()
-                .first()
-            )
+            tag = fetch_tag(tag_id)
     except IntegrityError:
         return error(409, f"Tag with name '{name}' already exists")
 
     assert tag is not None
-    return jsonify(
-        {
-            'id': tag['id'],
-            'name': tag['name'],
-            'created_at': iso(tag['created_at']),
-            'updated_at': iso(tag['updated_at']),
-        }
-    )
+    return jsonify(tag_row_to_dict(tag))
 
 
 # Node endpoints
 def get_nodes_list() -> Response:
-    db = get_db()
     try:
         limit = int(request.args.get('limit', 100))
         offset = int(request.args.get('offset', 0))
@@ -236,16 +141,8 @@ def get_nodes_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total = db.execute(text('SELECT COUNT(*) FROM nodes')).scalar()
-    stmt = text(
-        """
-        SELECT id, label, description, is_container, created_at, updated_at
-        FROM nodes
-        ORDER BY id
-        LIMIT :limit OFFSET :offset
-        """
-    )
-    rows = db.execute(stmt, {'limit': limit, 'offset': offset}).mappings().all()
+    total = count_nodes()
+    rows = fetch_nodes_page(limit, offset)
 
     return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': [node_row_to_dict(r) for r in rows]})
 
@@ -287,30 +184,15 @@ def post_node_create() -> Response:
     tag_ids = data.get('tag_ids') or []
 
     try:
-        with transactional() as db:
+        with transactional():
             if parent_id is not None:
                 ensure_parent_is_valid(parent_id)
 
-            result = db.execute(
-                text(
-                    """
-                    INSERT INTO nodes (label, description, is_container)
-                    VALUES (:label, :description, :is_container)
-                    """
-                ),
-                {
-                    'label': label,
-                    'description': description,
-                    'is_container': is_container,
-                },
-            )
-            node_id = result.lastrowid
+            node_id = create_node(label, description, is_container)
 
-            # Parent relationship
             if parent_id is not None:
                 set_parent(node_id, parent_id)
 
-            # Tags
             if tag_ids:
                 replace_node_tags(node_id, tag_ids)
 
@@ -372,19 +254,16 @@ def patch_node_update(node_id: int) -> Response:
     tag_ids = data.get('tag_ids') or []
 
     try:
-        with transactional() as db:
+        with transactional():
             if parent_provided and parent_id is not None:
                 ensure_parent_is_valid(parent_id, child_id=node_id)
 
-            # Update node core fields
             if fields:
-                db.execute(update(nodes_table).where(nodes_table.c.id == node_id).values(**fields))
+                update_node_fields(node_id, fields)
 
-            # Parent relationship
             if parent_provided:
                 set_parent(node_id, parent_id)
 
-            # Tags
             if tag_ids_provided:
                 replace_node_tags(node_id, tag_ids)
 
