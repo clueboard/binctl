@@ -40,9 +40,12 @@ def transactional() -> Iterator[Connection]:
 # --------------------------------------------------------------------
 # Node helpers
 # --------------------------------------------------------------------
-def iso(dt: datetime | None) -> str | None:
-    if dt:
-        return dt.isoformat()
+def iso(dt: datetime | str | None) -> str | None:
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        return dt
+    return dt.isoformat()
 
 
 def fetch_node(node_id: int) -> RowMapping | None:
@@ -104,7 +107,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
     db = get_db()
     stmt = text(
         """
-        SELECT t.id, t.name
+        SELECT t.id, t.name, t.created_at, t.updated_at
         FROM tag_node tn
         JOIN tags t ON t.id = tn.tag_id
         WHERE tn.node_id = :id
@@ -113,7 +116,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
     )
     rows = db.execute(stmt, {'id': node_id}).mappings().all()
 
-    return [{'id': r['id'], 'name': r['name']} for r in rows]
+    return [{'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])} for r in rows]
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
@@ -140,6 +143,25 @@ def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
     if not row['is_container']:
         raise ValueError('parent_id must refer to a container node')
 
+    if child_id is not None:
+        cycle_stmt = text(
+            """
+            WITH RECURSIVE ancestors AS (
+                SELECT parent_id AS ancestor_id
+                FROM   edges
+                WHERE  child_id = :parent_id
+                UNION ALL
+                SELECT e.parent_id
+                FROM   edges e
+                JOIN   ancestors a ON e.child_id = a.ancestor_id
+            )
+            SELECT 1 FROM ancestors WHERE ancestor_id = :child_id LIMIT 1
+            """
+        )
+        cycle_row = db.execute(cycle_stmt, {'parent_id': parent_id, 'child_id': child_id}).first()
+        if cycle_row:
+            raise ValueError('setting this parent would create a cycle')
+
 
 def set_parent(node_id: int, parent_id: int | None) -> None:
     """
@@ -165,35 +187,14 @@ def set_parent(node_id: int, parent_id: int | None) -> None:
 def replace_node_tags(node_id: int, tag_ids: list[int]) -> None:
     db = get_db()
 
-    # Delete tags not in new set
+    db.execute(
+        text('DELETE FROM tag_node WHERE node_id = :node_id'),
+        {'node_id': node_id},
+    )
+
     if tag_ids:
         db.execute(
-            text(
-                """
-                DELETE FROM tag_node
-                WHERE node_id = :node_id
-                  AND tag_id NOT IN :ids
-                """
-            ),
-            {'node_id': node_id, 'ids': tuple(tag_ids)},
-        )
-
-    else:
-        db.execute(
-            text('DELETE FROM tag_node WHERE node_id = :node_id'),
-            {'node_id': node_id},
-        )
-
-    # Insert missing associations
-    if tag_ids:
-        db.execute(
-            text(
-                """
-                INSERT INTO tag_node (tag_id, node_id)
-                VALUES (:tag_id, :node_id)
-                ON DUPLICATE KEY UPDATE created_at = created_at
-                """
-            ),
+            text('INSERT INTO tag_node (tag_id, node_id) VALUES (:tag_id, :node_id)'),
             [{'tag_id': tid, 'node_id': node_id} for tid in set(tag_ids)],
         )
 
