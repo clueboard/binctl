@@ -48,7 +48,7 @@ def get_tags_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total = db.execute(text("SELECT COUNT(*) FROM tags")).scalar()
+    total = db.execute(text('SELECT COUNT(*) FROM tags')).scalar()
     stmt = text(
         """
         SELECT id, name, created_at, updated_at
@@ -231,7 +231,7 @@ def get_nodes_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total = db.execute(text("SELECT COUNT(*) FROM nodes")).scalar()
+    total = db.execute(text('SELECT COUNT(*) FROM nodes')).scalar()
     stmt = text(
         """
         SELECT id, label, description, is_container, created_at, updated_at
@@ -392,10 +392,11 @@ def patch_node_update(node_id: int) -> Response:
                 replace_node_tags(node_id, tag_ids)
 
     except ValueError as ve:
+        logger.error(f'Validation error in patch_node_update for node {node_id}: {ve}')
         return error(400, str(ve))
 
-    except SQLAlchemyError:
-        logger.exception('Database error in patch_node_update')
+    except SQLAlchemyError as e:
+        logger.exception(f'Database error in patch_node_update for node {node_id}: {e}')
         return error(500, 'Internal server error')
 
     # Return updated representation
