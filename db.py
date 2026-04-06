@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from flask import g
-from sqlalchemy import create_engine, text
+from sqlalchemy import Boolean, Column, MetaData, Table, create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
@@ -16,6 +16,16 @@ if not DATABASE_URL:
     raise RuntimeError('DATABASE_URL environment variable is not set')
 
 engine = create_engine(DATABASE_URL, future=True)
+
+_metadata = MetaData()
+nodes_table = Table(
+    'nodes',
+    _metadata,
+    Column('id'),
+    Column('label'),
+    Column('description'),
+    Column('is_container', Boolean),
+)
 
 
 def get_db() -> Connection:

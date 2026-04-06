@@ -44,6 +44,10 @@ class TestNodeCreate:
         tag_names = {t['name'] for t in resp.json()['tags']}
         assert tag_names == {'electronics', 'fragile'}
 
+    def test_create_nonexistent_tag(self, client):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'tag_ids': [99999]})
+        assert resp.status_code == 400
+
 
 class TestNodeGet:
     def test_get_detail_full(self, client, make_node, make_tag):
@@ -151,3 +155,8 @@ class TestNodePatch:
         resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': []})
         assert resp.status_code == 200
         assert resp.json()['tags'] == []
+
+    def test_patch_nonexistent_tag(self, client, make_node):
+        node_id = make_node('item')
+        resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [99999]})
+        assert resp.status_code == 400

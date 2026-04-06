@@ -26,6 +26,16 @@ Current CLI subcommands:
 - `binctl node list|get|create|update` - manage nodes
 - `binctl tag list|get|create|update`  - manage tags
 
+## Tests / CI
+
+The following must pass before merging:
+
+```
+uv run pytest
+uv run ruff check
+uv run ty check
+```
+
 ---
 
 ## Concepts

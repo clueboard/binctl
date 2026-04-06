@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from flask import Response, jsonify, request
-from sqlalchemy import text
+from sqlalchemy import text, update
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import BadRequest
 
@@ -16,6 +16,7 @@ from db import (
     get_db,
     iso,
     node_row_to_dict,
+    nodes_table,
     replace_node_tags,
     set_parent,
     transactional,
@@ -24,7 +25,6 @@ from web import error
 
 logger = logging.getLogger(__name__)
 
-_NODE_PATCH_ALLOWED_FIELDS = {'label', 'description', 'is_container'}
 
 
 def _parse_json_body() -> dict:
@@ -120,8 +120,10 @@ def post_tag_create() -> Response:
     data = _parse_json_body()
     name = data.get('name')
 
-    if not name:
+    if name is None:
         return error(400, 'Missing required field: name')
+    if not name:
+        return error(400, 'Required field cannot be empty: name')
     if len(name) > 255:
         return error(400, 'name must be 255 characters or fewer')
 
@@ -137,23 +139,24 @@ def post_tag_create() -> Response:
                 {'name': name},
             )
             tag_id = result.lastrowid
+            tag = (
+                db.execute(
+                    text(
+                        """
+                    SELECT id, name, created_at, updated_at
+                    FROM tags
+                    WHERE id = :id
+                    """
+                    ),
+                    {'id': tag_id},
+                )
+                .mappings()
+                .first()
+            )
     except IntegrityError:
         return error(409, f"Tag with name '{name}' already exists")
-    tag = (
-        db.execute(
-            text(
-                """
-            SELECT id, name, created_at, updated_at
-            FROM tags
-            WHERE id = :id
-            """
-            ),
-            {'id': tag_id},
-        )
-        .mappings()
-        .first()
-    )
 
+    assert tag is not None
     resp = jsonify(
         {
             'id': tag['id'],
@@ -171,8 +174,10 @@ def patch_tag_update(tag_id: int) -> Response:
     data = _parse_json_body()
     name = data.get('name')
 
-    if not name:
+    if name is None:
         return error(400, 'Missing required field: name')
+    if not name:
+        return error(400, 'Required field cannot be empty: name')
     if len(name) > 255:
         return error(400, 'name must be 255 characters or fewer')
 
@@ -190,24 +195,24 @@ def patch_tag_update(tag_id: int) -> Response:
             )
             if result.rowcount == 0:
                 return error(404, 'Tag not found')
+            tag = (
+                db.execute(
+                    text(
+                        """
+                    SELECT id, name, created_at, updated_at
+                    FROM tags
+                    WHERE id = :id
+                    """
+                    ),
+                    {'id': tag_id},
+                )
+                .mappings()
+                .first()
+            )
     except IntegrityError:
         return error(409, f"Tag with name '{name}' already exists")
 
-    tag = (
-        db.execute(
-            text(
-                """
-            SELECT id, name, created_at, updated_at
-            FROM tags
-            WHERE id = :id
-            """
-            ),
-            {'id': tag_id},
-        )
-        .mappings()
-        .first()
-    )
-
+    assert tag is not None
     return jsonify(
         {
             'id': tag['id'],
@@ -270,7 +275,7 @@ def post_node_create() -> Response:
     if label is None:
         return error(400, 'Missing required field: label')
     if not label:
-        return error(400, 'label cannot be empty')
+        return error(400, 'Required field cannot be empty: label')
     if len(label) > 255:
         return error(400, 'label must be 255 characters or fewer')
 
@@ -282,10 +287,10 @@ def post_node_create() -> Response:
     tag_ids = data.get('tag_ids') or []
 
     try:
-        if parent_id is not None:
-            ensure_parent_is_valid(parent_id)
-
         with transactional() as db:
+            if parent_id is not None:
+                ensure_parent_is_valid(parent_id)
+
             result = db.execute(
                 text(
                     """
@@ -312,12 +317,16 @@ def post_node_create() -> Response:
     except ValueError as ve:
         return error(400, str(ve))
 
+    except IntegrityError:
+        return error(400, 'One or more tag_ids do not exist')
+
     except SQLAlchemyError:
         logger.exception('Database error in post_node_create')
         return error(500, 'Internal server error')
 
     # Fetch full node representation
     row = fetch_node(node_id)
+    assert row is not None
     parent_id = fetch_parent_id(node_id)
     children = fetch_children(node_id)
     tags = fetch_tags_for_node(node_id)
@@ -363,25 +372,13 @@ def patch_node_update(node_id: int) -> Response:
     tag_ids = data.get('tag_ids') or []
 
     try:
-        if parent_provided and parent_id is not None:
-            ensure_parent_is_valid(parent_id, child_id=node_id)
-
         with transactional() as db:
+            if parent_provided and parent_id is not None:
+                ensure_parent_is_valid(parent_id, child_id=node_id)
+
             # Update node core fields
             if fields:
-                if not fields.keys() <= _NODE_PATCH_ALLOWED_FIELDS:
-                    return error(400, 'Invalid field names')
-                sets = ', '.join(f'{k} = :{k}' for k in fields.keys())
-                params = dict(fields)
-                params['id'] = node_id
-                stmt = text(
-                    f"""
-                    UPDATE nodes
-                    SET {sets}
-                    WHERE id = :id
-                    """
-                )
-                db.execute(stmt, params)
+                db.execute(update(nodes_table).where(nodes_table.c.id == node_id).values(**fields))
 
             # Parent relationship
             if parent_provided:
@@ -395,12 +392,16 @@ def patch_node_update(node_id: int) -> Response:
         logger.error(f'Validation error in patch_node_update for node {node_id}: {ve}')
         return error(400, str(ve))
 
+    except IntegrityError:
+        return error(400, 'One or more tag_ids do not exist')
+
     except SQLAlchemyError as e:
         logger.exception(f'Database error in patch_node_update for node {node_id}: {e}')
         return error(500, 'Internal server error')
 
     # Return updated representation
     row = fetch_node(node_id)
+    assert row is not None
     parent_id = fetch_parent_id(node_id)
     children = fetch_children(node_id)
     tags = fetch_tags_for_node(node_id)
