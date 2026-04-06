@@ -9,6 +9,18 @@ Instead of thinking in terms of "SKUs" and "stock levels", `binctl` models your 
 
 It's backed by a Flask API with a CLI frontend.
 
+## Setup
+
+1. Copy `.env.example` and fill in your database credentials:
+   ```
+   cp .env.example .env
+   ```
+2. Set the `DATABASE_URL` environment variable before starting the server:
+   ```
+   export DATABASE_URL=mysql+pymysql://user:password@localhost/binctl
+   ```
+   The format follows SQLAlchemy's URL scheme. MySQL via `pymysql` is the expected driver, but any SQLAlchemy-compatible URL will work.
+
 Current CLI subcommands:
 
 - `binctl node list|get|create|update` - manage nodes

@@ -65,10 +65,17 @@ def main(cli):
 
 def _node_list(cli):
     client = _get_client(cli)
-    nodes = get_nodes_list.sync(client=client) or []
-    # `nodes` is likely a list of model objects; convert to dicts if needed.
-    data = [n.to_dict() if hasattr(n, 'to_dict') else n for n in nodes]
-    _echo_json(cli, data)
+    items = []
+    offset = 0
+    limit = 100
+    while True:
+        page = get_nodes_list.sync(client=client, limit=limit, offset=offset)
+        _check_response(page, 'node list')
+        items.extend(page.items)
+        if len(items) >= page.total:
+            break
+        offset += limit
+    _echo_json(cli, [n.to_dict() for n in items])
 
 
 def _node_get(cli, node_id: int):
@@ -130,9 +137,17 @@ def _node_update(cli, node_id: int):
 
 def _tag_list(cli):
     client = _get_client(cli)
-    tags = get_tags_list.sync(client=client) or []
-    data = [t.to_dict() if hasattr(t, 'to_dict') else t for t in tags]
-    _echo_json(cli, data)
+    items = []
+    offset = 0
+    limit = 100
+    while True:
+        page = get_tags_list.sync(client=client, limit=limit, offset=offset)
+        _check_response(page, 'tag list')
+        items.extend(page.items)
+        if len(items) >= page.total:
+            break
+        offset += limit
+    _echo_json(cli, [t.to_dict() for t in items])
 
 
 def _tag_get(cli, tag_id: int):

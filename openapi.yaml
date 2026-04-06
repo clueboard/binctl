@@ -12,15 +12,27 @@ paths:
       operationId: get_nodes_list
       tags: [nodes]
       summary: List all nodes
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
       responses:
         "200":
-          description: List of nodes
+          description: Paginated list of nodes
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Node"
+                $ref: "#/components/schemas/NodePage"
     post:
       x-openapi-router-controller: routes
       operationId: post_node_create
@@ -89,15 +101,27 @@ paths:
       operationId: get_tags_list
       tags: [tags]
       summary: List all tags
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
       responses:
         "200":
-          description: List of tags
+          description: Paginated list of tags
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Tag"
+                $ref: "#/components/schemas/TagPage"
     post:
       x-openapi-router-controller: routes
       operationId: post_tag_create
@@ -162,6 +186,36 @@ paths:
 
 components:
   schemas:
+
+    NodePage:
+      type: object
+      required: [total, limit, offset, items]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Node"
+
+    TagPage:
+      type: object
+      required: [total, limit, offset, items]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tag"
 
     NodeCreate:
       type: object

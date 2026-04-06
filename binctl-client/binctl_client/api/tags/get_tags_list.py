@@ -5,30 +5,33 @@ import httpx
 
 from ... import errors
 from ...client import AuthenticatedClient, Client
-from ...models.tag import Tag
-from ...types import Response
+from ...models.tag_page import TagPage
+from ...types import UNSET, Response, Unset
 
 
-def _get_kwargs() -> dict[str, Any]:
+def _get_kwargs(
+    *,
+    limit: int | Unset = 100,
+    offset: int | Unset = 0,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {}
+    if not isinstance(limit, Unset):
+        params["limit"] = limit
+    if not isinstance(offset, Unset):
+        params["offset"] = offset
 
     _kwargs: dict[str, Any] = {
         "method": "get",
         "url": "/v1/tags",
+        "params": params,
     }
 
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> list[Tag] | None:
+def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> TagPage | None:
     if response.status_code == 200:
-        response_200 = []
-        _response_200 = response.json()
-        for response_200_item_data in _response_200:
-            response_200_item = Tag.from_dict(response_200_item_data)
-
-            response_200.append(response_200_item)
-
-        return response_200
+        return TagPage.from_dict(response.json())
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -36,7 +39,7 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[list[Tag]]:
+def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[TagPage]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -48,7 +51,9 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
-) -> Response[list[Tag]]:
+    limit: int | Unset = 100,
+    offset: int | Unset = 0,
+) -> Response[TagPage]:
     """List all tags
 
     Raises:
@@ -56,10 +61,10 @@ def sync_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[list[Tag]]
+        Response[TagPage]
     """
 
-    kwargs = _get_kwargs()
+    kwargs = _get_kwargs(limit=limit, offset=offset)
 
     response = client.get_httpx_client().request(
         **kwargs,
@@ -71,7 +76,9 @@ def sync_detailed(
 def sync(
     *,
     client: AuthenticatedClient | Client,
-) -> list[Tag] | None:
+    limit: int | Unset = 100,
+    offset: int | Unset = 0,
+) -> TagPage | None:
     """List all tags
 
     Raises:
@@ -79,18 +86,22 @@ def sync(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        list[Tag]
+        TagPage
     """
 
     return sync_detailed(
         client=client,
+        limit=limit,
+        offset=offset,
     ).parsed
 
 
 async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
-) -> Response[list[Tag]]:
+    limit: int | Unset = 100,
+    offset: int | Unset = 0,
+) -> Response[TagPage]:
     """List all tags
 
     Raises:
@@ -98,10 +109,10 @@ async def asyncio_detailed(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[list[Tag]]
+        Response[TagPage]
     """
 
-    kwargs = _get_kwargs()
+    kwargs = _get_kwargs(limit=limit, offset=offset)
 
     response = await client.get_async_httpx_client().request(**kwargs)
 
@@ -111,7 +122,9 @@ async def asyncio_detailed(
 async def asyncio(
     *,
     client: AuthenticatedClient | Client,
-) -> list[Tag] | None:
+    limit: int | Unset = 100,
+    offset: int | Unset = 0,
+) -> TagPage | None:
     """List all tags
 
     Raises:
@@ -119,11 +132,13 @@ async def asyncio(
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        list[Tag]
+        TagPage
     """
 
     return (
         await asyncio_detailed(
             client=client,
+            limit=limit,
+            offset=offset,
         )
     ).parsed

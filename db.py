@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import datetime
 
 from flask import g
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
+from sqlalchemy.engine.row import RowMapping
 
-from web import error
 
 # Configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -13,22 +19,33 @@ if not DATABASE_URL:
 engine = create_engine(DATABASE_URL, future=True)
 
 
-def get_db():
+def get_db() -> Connection:
     if 'db' not in g:
         g.db = engine.connect()
 
     return g.db
 
 
+@contextmanager
+def transactional() -> Iterator[Connection]:
+    db = get_db()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
 # --------------------------------------------------------------------
 # Node helpers
 # --------------------------------------------------------------------
-def iso(dt):
+def iso(dt: datetime | None) -> str | None:
     if dt:
         return dt.isoformat()
 
 
-def fetch_node(node_id):
+def fetch_node(node_id: int) -> RowMapping | None:
     db = get_db()
     stmt = text(
         """
@@ -42,7 +59,7 @@ def fetch_node(node_id):
     return row
 
 
-def fetch_parent_id(node_id):
+def fetch_parent_id(node_id: int) -> int | None:
     db = get_db()
     stmt = text(
         """
@@ -56,7 +73,7 @@ def fetch_parent_id(node_id):
     return row['parent_id'] if row else None
 
 
-def fetch_children(node_id):
+def fetch_children(node_id: int) -> list[dict]:
     db = get_db()
     stmt = text(
         """
@@ -83,7 +100,7 @@ def fetch_children(node_id):
     ]
 
 
-def fetch_tags_for_node(node_id):
+def fetch_tags_for_node(node_id: int) -> list[dict]:
     db = get_db()
     stmt = text(
         """
@@ -99,16 +116,13 @@ def fetch_tags_for_node(node_id):
     return [{'id': r['id'], 'name': r['name']} for r in rows]
 
 
-def ensure_parent_is_valid(parent_id, child_id=None):
+def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
     """
-    Ensures parent exists and (optionally) isn't equal to child.
-    Optionally enforces that parent is a container.
+    Validates that parent_id refers to an existing container node.
+    Raises ValueError on any violation.
     """
-    if parent_id is None:
-        return None
-
     if child_id is not None and parent_id == child_id:
-        return error(400, 'parent_id cannot equal node_id')
+        raise ValueError('parent_id cannot equal node_id')
 
     db = get_db()
     stmt = text(
@@ -121,15 +135,13 @@ def ensure_parent_is_valid(parent_id, child_id=None):
     row = db.execute(stmt, {'id': parent_id}).mappings().first()
 
     if not row:
-        return error(400, f'parent_id {parent_id} does not exist')
+        raise ValueError(f'parent_id {parent_id} does not exist')
 
     if not row['is_container']:
-        return error(400, 'parent_id must refer to a container node')
-
-    return None
+        raise ValueError('parent_id must refer to a container node')
 
 
-def set_parent(node_id, parent_id):
+def set_parent(node_id: int, parent_id: int | None) -> None:
     """
     Sets (or clears) a node's parent.
     If parent_id is None, removes parent.
@@ -150,7 +162,7 @@ def set_parent(node_id, parent_id):
         )
 
 
-def replace_node_tags(node_id, tag_ids):
+def replace_node_tags(node_id: int, tag_ids: list[int]) -> None:
     db = get_db()
 
     # Delete tags not in new set
@@ -186,7 +198,7 @@ def replace_node_tags(node_id, tag_ids):
         )
 
 
-def node_row_to_dict(row):
+def node_row_to_dict(row: RowMapping) -> dict:
     return {
         'id': row['id'],
         'label': row['label'],
