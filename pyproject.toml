@@ -2,7 +2,7 @@
 name = "binctl"
 version = "0.1.0"
 description = "Storage node and tag management server + CLI"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "binctl-client",
     "uvicorn>=0.30",

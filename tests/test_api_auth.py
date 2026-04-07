@@ -6,8 +6,6 @@ from auth import hash_password
 
 
 def _create_user(engine, username: str, password: str) -> None:
-    from auth import hash_password
-
     with engine.connect() as conn:
         conn.execute(
             text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
@@ -44,6 +42,20 @@ class TestLogin:
 
 
 class TestExpiry:
+    def test_null_expiry_is_accepted(self, client, engine, clean_db):
+        with engine.connect() as conn:
+            result = conn.execute(
+                text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
+                {'u': 'noexpiry_user', 'h': hash_password('pass')},
+            )
+            conn.execute(
+                text('INSERT INTO tokens (user_id, token, expires_at) VALUES (:uid, :tok, NULL)'),
+                {'uid': result.lastrowid, 'tok': 'noexpirytoken123'},
+            )
+            conn.commit()
+        resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer noexpirytoken123'})
+        assert resp.status_code == 200
+
     def test_expired_token_returns_401(self, client, engine, clean_db):
         with engine.connect() as conn:
             result = conn.execute(

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
 
 from connexion.exceptions import Unauthorized
 from passlib.context import CryptContext
@@ -35,10 +34,6 @@ def lookup_token(token: str, required_scopes: object = None) -> dict:  # noqa: A
     row = db.fetch_token_and_touch(token)
 
     if row is None:
-        raise Unauthorized('Invalid or expired token')
-
-    expires = row['expires_at']
-    if expires is not None and expires < datetime.now(timezone.utc):
         raise Unauthorized('Invalid or expired token')
 
     return {

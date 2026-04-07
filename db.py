@@ -39,14 +39,6 @@ def transactional() -> Iterator[Connection]:
 # --------------------------------------------------------------------
 # Node helpers
 # --------------------------------------------------------------------
-def _as_utc(dt: datetime | str | None) -> datetime | None:
-    if dt is None:
-        return None
-    if isinstance(dt, str):
-        dt = datetime.fromisoformat(dt)
-    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
-
-
 def iso(dt: datetime | str | None) -> str | None:
     if dt is None:
         return None
@@ -340,6 +332,14 @@ def update_node_fields(node_id: int, fields: dict) -> None:
 # --------------------------------------------------------------------
 # Auth helpers
 # --------------------------------------------------------------------
+def _as_utc(dt: datetime | str | None) -> datetime | None:
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        dt = datetime.fromisoformat(dt)
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
 def fetch_user_by_username(username: str) -> RowMapping | None:
     return get_db().execute(
         text('SELECT id, password_hash FROM users WHERE username = :u'),
@@ -383,11 +383,11 @@ def fetch_token_and_touch(token: str) -> dict | None:
         row = conn.execute(
             text(
                 """
-                SELECT t.id AS token_id, t.expires_at,
-                       u.id AS user_id, u.username
+                SELECT t.id AS token_id, u.id AS user_id, u.username
                 FROM tokens t
                 JOIN users u ON u.id = t.user_id
                 WHERE t.token = :token
+                  AND (t.expires_at IS NULL OR t.expires_at > CURRENT_TIMESTAMP)
                 """
             ),
             {'token': token},
@@ -401,7 +401,6 @@ def fetch_token_and_touch(token: str) -> dict | None:
         conn.commit()
     return {
         'token_id': row['token_id'],
-        'expires_at': _as_utc(row['expires_at']),
         'user_id': row['user_id'],
         'username': row['username'],
     }
