@@ -71,6 +71,7 @@ def _node_list(cli):
     while True:
         page = get_nodes_list.sync(client=client, limit=limit, offset=offset)
         _check_response(page, 'node list')
+        assert page is not None  # _check_response raises SystemExit on None; assert narrows the type for ty
         items.extend(page.items)
         if len(items) >= page.total:
             break
@@ -143,6 +144,7 @@ def _tag_list(cli):
     while True:
         page = get_tags_list.sync(client=client, limit=limit, offset=offset)
         _check_response(page, 'tag list')
+        assert page is not None  # _check_response raises SystemExit on None; assert narrows the type for ty
         items.extend(page.items)
         if len(items) >= page.total:
             break
