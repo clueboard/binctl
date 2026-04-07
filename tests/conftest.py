@@ -14,7 +14,7 @@ from web import create_app  # noqa: E402
 
 _SQLITE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS nodes (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    id           INTEGER PRIMARY KEY,
     label        TEXT NOT NULL,
     description  TEXT,
     is_container INTEGER NOT NULL DEFAULT 0,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS edges (
 );
 
 CREATE TABLE IF NOT EXISTS tags (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    id         INTEGER PRIMARY KEY,
     name       TEXT NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS tag_node (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    id            INTEGER PRIMARY KEY,
     username      TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS tokens (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    id           INTEGER PRIMARY KEY,
     user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash   TEXT UNIQUE NOT NULL,
     token_suffix TEXT NOT NULL,
@@ -125,18 +125,19 @@ def auth_token(engine, clean_db):
     import secrets
 
     from auth import hash_password, hash_token
+    from db.id_gen import new_id
 
     token = secrets.token_urlsafe(32)
     pw_hash = hash_password('testpass')
+    user_id = new_id()
     with engine.connect() as conn:
-        result = conn.execute(
-            text("INSERT INTO users (username, password_hash) VALUES ('testuser', :h)"),
-            {'h': pw_hash},
-        )
-        user_id = result.lastrowid
         conn.execute(
-            text('INSERT INTO tokens (user_id, token_hash, token_suffix) VALUES (:uid, :th, :ts)'),
-            {'uid': user_id, 'th': hash_token(token), 'ts': token[-4:]},
+            text("INSERT INTO users (id, username, password_hash) VALUES (:id, 'testuser', :h)"),
+            {'id': user_id, 'h': pw_hash},
+        )
+        conn.execute(
+            text('INSERT INTO tokens (id, user_id, token_hash, token_suffix) VALUES (:id, :uid, :th, :ts)'),
+            {'id': new_id(), 'uid': user_id, 'th': hash_token(token), 'ts': token[-4:]},
         )
         conn.commit()
     return token

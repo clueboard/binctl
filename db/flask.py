@@ -10,6 +10,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
 import db
+from db.id_gen import new_id
 
 
 def get_db() -> Connection:
@@ -210,16 +211,17 @@ def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
 
 
 def create_node(label: str, description: str | None, is_container: bool) -> int:
-    result = get_db().execute(
+    node_id = new_id()
+    get_db().execute(
         text(
             """
-            INSERT INTO nodes (label, description, is_container)
-            VALUES (:label, :description, :is_container)
+            INSERT INTO nodes (id, label, description, is_container)
+            VALUES (:id, :label, :description, :is_container)
             """
         ),
-        {'label': label, 'description': description, 'is_container': is_container},
+        {'id': node_id, 'label': label, 'description': description, 'is_container': is_container},
     )
-    return result.lastrowid
+    return node_id
 
 
 def update_node_fields(node_id: int, fields: dict) -> None:
@@ -276,8 +278,9 @@ def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
 
 
 def create_tag(name: str) -> int:
-    result = get_db().execute(text('INSERT INTO tags (name) VALUES (:name)'), {'name': name})
-    return result.lastrowid
+    tag_id = new_id()
+    get_db().execute(text('INSERT INTO tags (id, name) VALUES (:id, :name)'), {'id': tag_id, 'name': name})
+    return tag_id
 
 
 def update_tag(tag_id: int, name: str) -> int:
@@ -317,9 +320,10 @@ def create_user_session(user_id: int, token_hash: str, token_suffix: str) -> Non
         update_user_last_login(user_id)
         get_db().execute(
             text(
-                'INSERT INTO tokens (user_id, token_hash, token_suffix) VALUES (:user_id, :token_hash, :token_suffix)'
+                'INSERT INTO tokens (id, user_id, token_hash, token_suffix)'
+                ' VALUES (:id, :user_id, :token_hash, :token_suffix)'
             ),
-            {'user_id': user_id, 'token_hash': token_hash, 'token_suffix': token_suffix},
+            {'id': new_id(), 'user_id': user_id, 'token_hash': token_hash, 'token_suffix': token_suffix},
         )
 
 

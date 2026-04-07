@@ -7,6 +7,7 @@ from sqlalchemy.engine.row import RowMapping
 
 import db
 from auth import hash_token
+from db.id_gen import new_id
 
 
 def fetch_token_and_touch(token: str) -> dict | None:
@@ -50,8 +51,8 @@ def fetch_token_and_touch(token: str) -> dict | None:
 def create_user(username: str, password_hash: str) -> None:
     with db.engine.connect() as conn:
         conn.execute(
-            text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
-            {'u': username, 'h': password_hash},
+            text('INSERT INTO users (id, username, password_hash) VALUES (:id, :u, :h)'),
+            {'id': new_id(), 'u': username, 'h': password_hash},
         )
         conn.commit()
 

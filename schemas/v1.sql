@@ -7,7 +7,7 @@ CREATE TABLE schema_version (
 INSERT INTO schema_version (id, version) VALUES (1, 1);
 
 CREATE TABLE nodes (
-    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id           BIGINT UNSIGNED NOT NULL PRIMARY KEY,
     label        VARCHAR(255) NOT NULL,
     description  TEXT,
     is_container BOOL NOT NULL DEFAULT FALSE,
@@ -32,7 +32,7 @@ CREATE TABLE edges (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE tags (
-    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id           BIGINT UNSIGNED NOT NULL PRIMARY KEY,
     name         VARCHAR(255) NOT NULL UNIQUE,
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -54,7 +54,7 @@ CREATE TABLE tag_node (
 CREATE INDEX idx_tag_node_node_id ON tag_node (node_id);
 
 CREATE TABLE users (
-    id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id            BIGINT UNSIGNED NOT NULL PRIMARY KEY,
     username      VARCHAR(255) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -62,7 +62,7 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE tokens (
-    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id           BIGINT UNSIGNED NOT NULL PRIMARY KEY,
     user_id      BIGINT UNSIGNED NOT NULL,
     token_hash   VARCHAR(64) NOT NULL,
     token_suffix VARCHAR(4) NOT NULL,
