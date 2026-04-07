@@ -7,9 +7,10 @@ from auth import create_token, verify_password
 from db import get_db, transactional
 from web import error
 
-# Dummy hash used for constant-time comparison when user is not found,
-# preventing timing attacks that distinguish "no such user" from "wrong password".
-_DUMMY_HASH = '$2b$12$invalidhashfortimingprevention0000000000000000000000000'
+# Pre-computed bcrypt hash used when user is not found, so verify_password
+# always does full key-stretching regardless of whether the username exists.
+# Prevents timing attacks that distinguish "unknown user" from "wrong password".
+_DUMMY_HASH = '$2b$12$.OT9HVdRiWO/c/eawiYjjOa1.ujHVTxLo3eKEU9gdhRAMwUSvO/ei'
 
 
 def login(body: dict):
