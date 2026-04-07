@@ -160,3 +160,9 @@ class TestNodePatch:
         node_id = make_node('item')
         resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [99999]})
         assert resp.status_code == 400
+
+    def test_patch_remove_container_with_children_rejected(self, client, make_node):
+        parent_id = make_node('box', is_container=True)
+        make_node('item', parent_id=parent_id)
+        resp = client.patch(f'/v1/nodes/{parent_id}', json={'is_container': False})
+        assert resp.status_code == 400

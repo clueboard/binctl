@@ -20,6 +20,7 @@ from db import (
     fetch_tag,
     fetch_tags_for_node,
     fetch_tags_page,
+    node_has_children,
     node_row_to_dict,
     replace_node_tags,
     set_parent,
@@ -99,7 +100,9 @@ def post_tag_create() -> Response:
     except IntegrityError:
         return error(409, f"Tag with name '{name}' already exists")
 
-    assert tag is not None
+    if tag is None:
+        logger.error('fetch_tag returned None after create_tag succeeded for name=%r', name)
+        return error(500, 'Internal server error')
     resp = jsonify(tag_row_to_dict(tag))
     resp.status_code = 201
     return resp
@@ -125,7 +128,9 @@ def patch_tag_update(tag_id: int) -> Response:
     except IntegrityError:
         return error(409, f"Tag with name '{name}' already exists")
 
-    assert tag is not None
+    if tag is None:
+        logger.error('fetch_tag returned None after update_tag succeeded for tag_id=%d', tag_id)
+        return error(500, 'Internal server error')
     return jsonify(tag_row_to_dict(tag))
 
 
@@ -197,6 +202,7 @@ def post_node_create() -> Response:
                 replace_node_tags(node_id, tag_ids)
 
     except ValueError as ve:
+        logger.error(f'Validation error in post_node_create: {ve}')
         return error(400, str(ve))
 
     except IntegrityError:
@@ -208,7 +214,9 @@ def post_node_create() -> Response:
 
     # Fetch full node representation
     row = fetch_node(node_id)
-    assert row is not None
+    if row is None:
+        logger.error('fetch_node returned None after create_node succeeded for node_id=%d', node_id)
+        return error(500, 'Internal server error')
     parent_id = fetch_parent_id(node_id)
     children = fetch_children(node_id)
     tags = fetch_tags_for_node(node_id)
@@ -245,7 +253,10 @@ def patch_node_update(node_id: int) -> Response:
         fields['description'] = data['description']
 
     if 'is_container' in data:
-        fields['is_container'] = bool(data['is_container'])
+        value = bool(data['is_container'])
+        if not value and node_has_children(node_id):
+            return error(400, 'cannot set is_container=false on a node that has children')
+        fields['is_container'] = value
 
     parent_provided = 'parent_id' in data
     parent_id = data.get('parent_id') if parent_provided else None
@@ -280,7 +291,9 @@ def patch_node_update(node_id: int) -> Response:
 
     # Return updated representation
     row = fetch_node(node_id)
-    assert row is not None
+    if row is None:
+        logger.error('fetch_node returned None after update succeeded for node_id=%d', node_id)
+        return error(500, 'Internal server error')
     parent_id = fetch_parent_id(node_id)
     children = fetch_children(node_id)
     tags = fetch_tags_for_node(node_id)

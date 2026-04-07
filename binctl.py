@@ -71,7 +71,6 @@ def _node_list(cli):
     while True:
         page = get_nodes_list.sync(client=client, limit=limit, offset=offset)
         _check_response(page, 'node list')
-        assert page is not None
         items.extend(page.items)
         if len(items) >= page.total:
             break
@@ -144,7 +143,6 @@ def _tag_list(cli):
     while True:
         page = get_tags_list.sync(client=client, limit=limit, offset=offset)
         _check_response(page, 'tag list')
-        assert page is not None
         items.extend(page.items)
         if len(items) >= page.total:
             break

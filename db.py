@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from flask import g
-from sqlalchemy import Boolean, Column, MetaData, Table, create_engine, func, text, update
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
@@ -16,17 +16,6 @@ if not DATABASE_URL:
     raise RuntimeError('DATABASE_URL environment variable is not set')
 
 engine = create_engine(DATABASE_URL, future=True)
-
-_metadata = MetaData()
-nodes_table = Table(
-    'nodes',
-    _metadata,
-    Column('id'),
-    Column('label'),
-    Column('description'),
-    Column('is_container', Boolean),
-    Column('updated_at'),
-)
 
 
 def get_db() -> Connection:
@@ -111,6 +100,12 @@ def fetch_children(node_id: int) -> list[dict]:
         }
         for r in rows
     ]
+
+
+def node_has_children(node_id: int) -> bool:
+    db = get_db()
+    stmt = text('SELECT 1 FROM edges WHERE parent_id = :id LIMIT 1')
+    return db.execute(stmt, {'id': node_id}).first() is not None
 
 
 def fetch_tags_for_node(node_id: int) -> list[dict]:
@@ -322,6 +317,8 @@ def create_node(label: str, description: str | None, is_container: bool) -> int:
 
 
 def update_node_fields(node_id: int, fields: dict) -> None:
+    set_clause = ', '.join(f'{k} = :{k}' for k in fields)
     get_db().execute(
-        update(nodes_table).where(nodes_table.c.id == node_id).values(**fields, updated_at=func.now())
+        text(f'UPDATE nodes SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
+        {**fields, 'id': node_id},
     )
