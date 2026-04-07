@@ -327,3 +327,68 @@ def update_node_fields(node_id: int, fields: dict) -> None:
         text(f'UPDATE nodes SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
         {**fields, 'id': node_id},
     )
+
+
+# --------------------------------------------------------------------
+# Auth helpers
+# --------------------------------------------------------------------
+def fetch_user_by_username(username: str) -> RowMapping | None:
+    return get_db().execute(
+        text('SELECT id, password_hash FROM users WHERE username = :u'),
+        {'u': username},
+    ).mappings().first()
+
+
+def update_user_last_login(user_id: int) -> None:
+    get_db().execute(
+        text('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = :id'),
+        {'id': user_id},
+    )
+
+
+def create_user_session(user_id: int, token: str) -> None:
+    """Update last_login_at and insert a new token in a single transaction."""
+    with transactional():
+        update_user_last_login(user_id)
+        get_db().execute(
+            text('INSERT INTO tokens (user_id, token) VALUES (:user_id, :token)'),
+            {'user_id': user_id, 'token': token},
+        )
+
+
+def revoke_token(token_id: int) -> None:
+    with transactional():
+        get_db().execute(
+            text('DELETE FROM tokens WHERE id = :id'),
+            {'id': token_id},
+        )
+
+
+def fetch_token_and_touch(token: str) -> RowMapping | None:
+    """Fetch token+user row and update last_used_at atomically.
+
+    Uses engine.connect() directly — safe to call outside a Flask request
+    context (e.g. from Connexion's ASGI security middleware).
+    Returns None if the token does not exist.
+    """
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                """
+                SELECT t.id AS token_id, t.expires_at,
+                       u.id AS user_id, u.username
+                FROM tokens t
+                JOIN users u ON u.id = t.user_id
+                WHERE t.token = :token
+                """
+            ),
+            {'token': token},
+        ).mappings().first()
+        if row is None:
+            return None
+        conn.execute(
+            text('UPDATE tokens SET last_used_at = CURRENT_TIMESTAMP WHERE id = :id'),
+            {'id': row['token_id']},
+        )
+        conn.commit()
+    return row
