@@ -3,6 +3,7 @@ Tests for FK cascade behavior via raw SQL DELETE.
 No DELETE API endpoints exist, so these tests issue raw SQL deletes
 and verify the expected cascade effects via the HTTP API and direct DB queries.
 """
+
 from __future__ import annotations
 
 from sqlalchemy import text

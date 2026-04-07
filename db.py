@@ -121,7 +121,10 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
     )
     rows = db.execute(stmt, {'id': node_id}).mappings().all()
 
-    return [{'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])} for r in rows]
+    return [
+        {'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])}
+        for r in rows
+    ]
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
@@ -219,6 +222,7 @@ def node_row_to_dict(row: RowMapping) -> dict:
 # Tag helpers
 # --------------------------------------------------------------------
 
+
 def tag_row_to_dict(row: RowMapping) -> dict:
     return {
         'id': row['id'],
@@ -286,6 +290,7 @@ def update_tag(tag_id: int, name: str) -> int:
 # --------------------------------------------------------------------
 # Node write helpers
 # --------------------------------------------------------------------
+
 
 def count_nodes() -> int:
     return get_db().execute(text('SELECT COUNT(*) FROM nodes')).scalar()

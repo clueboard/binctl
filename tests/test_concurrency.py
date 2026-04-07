@@ -4,6 +4,7 @@ SQLite has write-level locking, so truly parallel writes would deadlock.
 Instead these tests use two separate test_client() instances in sequence
 to verify last-write-wins semantics and idempotency.
 """
+
 from __future__ import annotations
 
 

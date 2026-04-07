@@ -4,6 +4,7 @@ Tests for cycle detection in ensure_parent_is_valid.
 Calls the db function directly inside a Flask app context to avoid HTTP overhead.
 Tree structures are set up via raw SQL against the shared SQLite engine.
 """
+
 from __future__ import annotations
 
 import pytest
