@@ -12,6 +12,7 @@ class TestAsUtc:
     def test_naive_datetime_stamped_as_utc(self):
         naive = datetime(2024, 1, 1, 12, 0, 0)
         result = _as_utc(naive)
+        assert result is not None
         assert result == datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         assert result.tzinfo is timezone.utc
 

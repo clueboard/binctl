@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS tokens (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token        TEXT UNIQUE NOT NULL,
+    token_hash   TEXT UNIQUE NOT NULL,
+    token_suffix TEXT NOT NULL,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP,
     expires_at   TIMESTAMP
@@ -123,7 +124,7 @@ def client(app, clean_db):
 def auth_token(engine, clean_db):
     import secrets
 
-    from auth import hash_password
+    from auth import hash_password, hash_token
 
     token = secrets.token_urlsafe(32)
     pw_hash = hash_password('testpass')
@@ -134,8 +135,8 @@ def auth_token(engine, clean_db):
         )
         user_id = result.lastrowid
         conn.execute(
-            text('INSERT INTO tokens (user_id, token) VALUES (:uid, :tok)'),
-            {'uid': user_id, 'tok': token},
+            text('INSERT INTO tokens (user_id, token_hash, token_suffix) VALUES (:uid, :th, :ts)'),
+            {'uid': user_id, 'th': hash_token(token), 'ts': token[-4:]},
         )
         conn.commit()
     return token

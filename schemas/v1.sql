@@ -64,10 +64,11 @@ CREATE TABLE users (
 CREATE TABLE tokens (
     id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id      BIGINT UNSIGNED NOT NULL,
-    token        VARCHAR(64) NOT NULL,
+    token_hash   VARCHAR(64) NOT NULL,
+    token_suffix VARCHAR(4) NOT NULL,
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP,
     expires_at   TIMESTAMP,
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY idx_tokens_token (token)
+    UNIQUE KEY idx_tokens_token_hash (token_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

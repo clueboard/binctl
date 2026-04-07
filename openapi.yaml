@@ -227,7 +227,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      x-bearerInfoFunc: auth.lookup_token
+      x-bearerInfoFunc: auth_operations.lookup_token
 
   schemas:
 

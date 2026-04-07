@@ -10,6 +10,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
+from auth import hash_token
+
 # Configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:
@@ -341,10 +343,15 @@ def _as_utc(dt: datetime | str | None) -> datetime | None:
 
 
 def fetch_user_by_username(username: str) -> RowMapping | None:
-    return get_db().execute(
-        text('SELECT id, password_hash FROM users WHERE username = :u'),
-        {'u': username},
-    ).mappings().first()
+    return (
+        get_db()
+        .execute(
+            text('SELECT id, password_hash FROM users WHERE username = :u'),
+            {'u': username},
+        )
+        .mappings()
+        .first()
+    )
 
 
 def update_user_last_login(user_id: int) -> None:
@@ -354,13 +361,15 @@ def update_user_last_login(user_id: int) -> None:
     )
 
 
-def create_user_session(user_id: int, token: str) -> None:
+def create_user_session(user_id: int, token_hash: str, token_suffix: str) -> None:
     """Update last_login_at and insert a new token in a single transaction."""
     with transactional():
         update_user_last_login(user_id)
         get_db().execute(
-            text('INSERT INTO tokens (user_id, token) VALUES (:user_id, :token)'),
-            {'user_id': user_id, 'token': token},
+            text(
+                'INSERT INTO tokens (user_id, token_hash, token_suffix) VALUES (:user_id, :token_hash, :token_suffix)'
+            ),
+            {'user_id': user_id, 'token_hash': token_hash, 'token_suffix': token_suffix},
         )
 
 
@@ -380,18 +389,22 @@ def fetch_token_and_touch(token: str) -> dict | None:
     Returns None if the token does not exist.
     """
     with engine.connect() as conn:
-        row = conn.execute(
-            text(
-                """
+        row = (
+            conn.execute(
+                text(
+                    """
                 SELECT t.id AS token_id, u.id AS user_id, u.username
                 FROM tokens t
                 JOIN users u ON u.id = t.user_id
-                WHERE t.token = :token
+                WHERE t.token_hash = :token_hash
                   AND (t.expires_at IS NULL OR t.expires_at > CURRENT_TIMESTAMP)
                 """
-            ),
-            {'token': token},
-        ).mappings().first()
+                ),
+                {'token_hash': hash_token(token)},
+            )
+            .mappings()
+            .first()
+        )
         if row is None:
             return None
         conn.execute(

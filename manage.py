@@ -45,23 +45,27 @@ def create_user() -> None:
 
 def list_users() -> None:
     with _db.engine.connect() as conn:
-        rows = conn.execute(
-            text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')
-        ).mappings().all()
+        rows = (
+            conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()
+        )
 
     if not rows:
         print('No users.')
         return
     for row in rows:
-        print(f"[{row['id']}] {row['username']}  created={row['created_at']}  last_login={row['last_login_at']}")
+        print(f'[{row["id"]}] {row["username"]}  created={row["created_at"]}  last_login={row["last_login_at"]}')
 
 
 def revoke_tokens(username: str) -> None:
     with _db.engine.connect() as conn:
-        user = conn.execute(
-            text('SELECT id FROM users WHERE username = :u'),
-            {'u': username},
-        ).mappings().first()
+        user = (
+            conn.execute(
+                text('SELECT id FROM users WHERE username = :u'),
+                {'u': username},
+            )
+            .mappings()
+            .first()
+        )
         if user is None:
             print(f"User '{username}' not found.", file=sys.stderr)
             sys.exit(1)

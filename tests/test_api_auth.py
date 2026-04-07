@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
-from auth import hash_password
+from auth import hash_password, hash_token
 
 
 def _create_user(engine, username: str, password: str) -> None:
@@ -49,8 +49,10 @@ class TestExpiry:
                 {'u': 'noexpiry_user', 'h': hash_password('pass')},
             )
             conn.execute(
-                text('INSERT INTO tokens (user_id, token, expires_at) VALUES (:uid, :tok, NULL)'),
-                {'uid': result.lastrowid, 'tok': 'noexpirytoken123'},
+                text(
+                    'INSERT INTO tokens (user_id, token_hash, token_suffix, expires_at) VALUES (:uid, :th, :ts, NULL)'
+                ),
+                {'uid': result.lastrowid, 'th': hash_token('noexpirytoken123'), 'ts': '3123'},
             )
             conn.commit()
         resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer noexpirytoken123'})
@@ -63,8 +65,15 @@ class TestExpiry:
                 {'u': 'expiry_user', 'h': hash_password('pass')},
             )
             conn.execute(
-                text('INSERT INTO tokens (user_id, token, expires_at) VALUES (:uid, :tok, :exp)'),
-                {'uid': result.lastrowid, 'tok': 'expiredtoken123', 'exp': '2000-01-01 00:00:00'},
+                text(
+                    'INSERT INTO tokens (user_id, token_hash, token_suffix, expires_at) VALUES (:uid, :th, :ts, :exp)'
+                ),
+                {
+                    'uid': result.lastrowid,
+                    'th': hash_token('expiredtoken123'),
+                    'ts': '3123',
+                    'exp': '2000-01-01 00:00:00',
+                },
             )
             conn.commit()
         resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer expiredtoken123'})

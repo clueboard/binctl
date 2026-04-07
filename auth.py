@@ -1,11 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import secrets
 
-from connexion.exceptions import Unauthorized
 from passlib.context import CryptContext
-
-import db
 
 _crypt = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
@@ -25,19 +23,14 @@ def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def lookup_token(token: str, required_scopes: object = None) -> dict:  # noqa: ARG001
-    """Connexion x-bearerInfoFunc security handler.
+def hash_token(token: str) -> str:
+    """Return the SHA-256 hex digest of a raw API token."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
-    Uses db.fetch_token_and_touch() which opens its own engine connection,
-    safe to call outside a Flask application context.
+
+def mask_token(suffix: str, total_length: int = 43) -> str:
+    """Return a masked token string, e.g. '************abcd'.
+
+    total_length=43 matches len(secrets.token_urlsafe(32)).
     """
-    row = db.fetch_token_and_touch(token)
-
-    if row is None:
-        raise Unauthorized('Invalid or expired token')
-
-    return {
-        'sub': row['username'],
-        'user_id': row['user_id'],
-        'token_id': row['token_id'],
-    }
+    return '*' * (total_length - len(suffix)) + suffix
