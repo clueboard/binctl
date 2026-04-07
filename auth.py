@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import secrets
 
 from passlib.context import CryptContext
@@ -20,7 +21,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 _TOKEN_BYTES = 32
-TOKEN_LENGTH = len(secrets.token_urlsafe(_TOKEN_BYTES))
+TOKEN_LENGTH = math.ceil(_TOKEN_BYTES * 4 / 3)  # base64url length without padding
 
 
 def generate_token() -> str:
