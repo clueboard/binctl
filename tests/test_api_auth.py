@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
+from auth import hash_password
+
 
 def _create_user(engine, username: str, password: str) -> None:
     from auth import hash_password
@@ -39,6 +41,22 @@ class TestLogin:
         token = login_resp.json()['token']
         resp = client.get('/v1/nodes', headers={'Authorization': f'Bearer {token}'})
         assert resp.status_code == 200
+
+
+class TestExpiry:
+    def test_expired_token_returns_401(self, client, engine, clean_db):
+        with engine.connect() as conn:
+            result = conn.execute(
+                text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
+                {'u': 'expiry_user', 'h': hash_password('pass')},
+            )
+            conn.execute(
+                text('INSERT INTO tokens (user_id, token, expires_at) VALUES (:uid, :tok, :exp)'),
+                {'uid': result.lastrowid, 'tok': 'expiredtoken123', 'exp': '2000-01-01 00:00:00'},
+            )
+            conn.commit()
+        resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer expiredtoken123'})
+        assert resp.status_code == 401
 
 
 class TestProtection:

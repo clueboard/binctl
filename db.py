@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import g
 from sqlalchemy import create_engine, text
@@ -39,6 +39,14 @@ def transactional() -> Iterator[Connection]:
 # --------------------------------------------------------------------
 # Node helpers
 # --------------------------------------------------------------------
+def _as_utc(dt: datetime | str | None) -> datetime | None:
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        dt = datetime.fromisoformat(dt)
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
 def iso(dt: datetime | str | None) -> str | None:
     if dt is None:
         return None
@@ -364,7 +372,7 @@ def revoke_token(token_id: int) -> None:
         )
 
 
-def fetch_token_and_touch(token: str) -> RowMapping | None:
+def fetch_token_and_touch(token: str) -> dict | None:
     """Fetch token+user row and update last_used_at atomically.
 
     Uses engine.connect() directly — safe to call outside a Flask request
@@ -391,4 +399,9 @@ def fetch_token_and_touch(token: str) -> RowMapping | None:
             {'id': row['token_id']},
         )
         conn.commit()
-    return row
+    return {
+        'token_id': row['token_id'],
+        'expires_at': _as_utc(row['expires_at']),
+        'user_id': row['user_id'],
+        'username': row['username'],
+    }

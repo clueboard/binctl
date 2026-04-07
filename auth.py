@@ -37,12 +37,9 @@ def lookup_token(token: str, required_scopes: object = None) -> dict:  # noqa: A
     if row is None:
         raise Unauthorized('Invalid or expired token')
 
-    if row['expires_at'] is not None:
-        expires = row['expires_at']
-        if isinstance(expires, str):
-            expires = datetime.fromisoformat(expires)
-        if expires.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-            raise Unauthorized('Invalid or expired token')
+    expires = row['expires_at']
+    if expires is not None and expires < datetime.now(timezone.utc):
+        raise Unauthorized('Invalid or expired token')
 
     return {
         'sub': row['username'],
