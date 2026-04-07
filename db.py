@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from flask import g
-from sqlalchemy import Boolean, Column, MetaData, Table, create_engine, text, update
+from sqlalchemy import Boolean, Column, MetaData, Table, create_engine, func, text, update
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
@@ -25,6 +25,7 @@ nodes_table = Table(
     Column('label'),
     Column('description'),
     Column('is_container', Boolean),
+    Column('updated_at'),
 )
 
 
@@ -281,7 +282,7 @@ def create_tag(name: str) -> int:
 
 def update_tag(tag_id: int, name: str) -> int:
     result = get_db().execute(
-        text('UPDATE tags SET name = :name WHERE id = :id'),
+        text('UPDATE tags SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
         {'name': name, 'id': tag_id},
     )
     return result.rowcount
@@ -321,4 +322,6 @@ def create_node(label: str, description: str | None, is_container: bool) -> int:
 
 
 def update_node_fields(node_id: int, fields: dict) -> None:
-    get_db().execute(update(nodes_table).where(nodes_table.c.id == node_id).values(**fields))
+    get_db().execute(
+        update(nodes_table).where(nodes_table.c.id == node_id).values(**fields, updated_at=func.now())
+    )
