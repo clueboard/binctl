@@ -19,8 +19,12 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
+_TOKEN_BYTES = 32
+TOKEN_LENGTH = len(secrets.token_urlsafe(_TOKEN_BYTES))
+
+
 def generate_token() -> str:
-    return secrets.token_urlsafe(32)
+    return secrets.token_urlsafe(_TOKEN_BYTES)
 
 
 def hash_token(token: str) -> str:
@@ -28,9 +32,6 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def mask_token(suffix: str, total_length: int = 43) -> str:
-    """Return a masked token string, e.g. '************abcd'.
-
-    total_length=43 matches len(secrets.token_urlsafe(32)).
-    """
+def mask_token(suffix: str, total_length: int = TOKEN_LENGTH) -> str:
+    """Return a masked token string, e.g. '************abcd'."""
     return '*' * (total_length - len(suffix)) + suffix

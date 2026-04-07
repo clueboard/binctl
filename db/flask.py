@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
+from datetime import datetime
 
 from flask import g
 from sqlalchemy import text
@@ -32,7 +33,7 @@ def transactional() -> Iterator[Connection]:
 # Helpers
 # --------------------------------------------------------------------
 
-def iso(dt) -> str | None:
+def iso(dt: datetime | str | None) -> str | None:
     if dt is None:
         return None
     if isinstance(dt, str):
@@ -99,17 +100,7 @@ def fetch_children(node_id: int) -> list[dict]:
         ),
         {'id': node_id},
     ).mappings().all()
-    return [
-        {
-            'id': r['id'],
-            'label': r['label'],
-            'description': r['description'],
-            'is_container': bool(r['is_container']),
-            'created_at': iso(r['created_at']),
-            'updated_at': iso(r['updated_at']),
-        }
-        for r in rows
-    ]
+    return [node_row_to_dict(r) for r in rows]
 
 
 def node_has_children(node_id: int) -> bool:
