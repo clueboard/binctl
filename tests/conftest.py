@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-# Must be set before any application import — db.py reads DATABASE_URL at module level
+# Must be set before any application import — db reads DATABASE_URL at module level
 os.environ['DATABASE_URL'] = 'sqlite://'
 
 import pytest  # noqa: E402

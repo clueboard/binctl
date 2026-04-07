@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import text
 
-from db import ensure_parent_is_valid
+from db.flask import ensure_parent_is_valid
 
 
 def _insert_node(conn, label, is_container=True):

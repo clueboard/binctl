@@ -4,7 +4,8 @@ import connexion
 from connexion.exceptions import Unauthorized
 
 from auth import generate_token, hash_token, verify_password
-from db import create_user_session, fetch_token_and_touch, fetch_user_by_username, revoke_token
+from db.direct import fetch_token_and_touch
+from db.flask import create_user_session, fetch_user_by_username, revoke_token
 from web import error
 
 # Pre-computed bcrypt hash used when user is not found, so verify_password

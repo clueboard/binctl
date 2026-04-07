@@ -6,7 +6,7 @@ from flask import Response, jsonify, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import BadRequest
 
-from db import (
+from db.flask import (
     count_nodes,
     count_tags,
     create_node,

@@ -12,10 +12,8 @@ if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)
 
-from sqlalchemy import text  # noqa: E402
-
-import db as _db  # noqa: E402
-from auth import hash_password  # noqa: E402
+import db.direct as _db  # noqa: E402
+from auth import hash_password, mask_token  # noqa: E402
 
 
 def create_user() -> None:
@@ -29,26 +27,16 @@ def create_user() -> None:
         print('Passwords do not match', file=sys.stderr)
         sys.exit(1)
 
-    pw_hash = hash_password(password)
-    with _db.engine.connect() as conn:
-        try:
-            conn.execute(
-                text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
-                {'u': username, 'h': pw_hash},
-            )
-            conn.commit()
-            print(f"User '{username}' created.")
-        except Exception as exc:
-            print(f'Error: {exc}', file=sys.stderr)
-            sys.exit(1)
+    try:
+        _db.create_user(username, hash_password(password))
+        print(f"User '{username}' created.")
+    except Exception as exc:
+        print(f'Error: {exc}', file=sys.stderr)
+        sys.exit(1)
 
 
 def list_users() -> None:
-    with _db.engine.connect() as conn:
-        rows = (
-            conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()
-        )
-
+    rows = _db.fetch_all_users()
     if not rows:
         print('No users.')
         return
@@ -56,25 +44,29 @@ def list_users() -> None:
         print(f'[{row["id"]}] {row["username"]}  created={row["created_at"]}  last_login={row["last_login_at"]}')
 
 
+def list_tokens(username: str) -> None:
+    rows = _db.fetch_tokens_for_username(username)
+    if rows is None:
+        print(f"User '{username}' not found.", file=sys.stderr)
+        sys.exit(1)
+    if not rows:
+        print(f"No tokens for '{username}'.")
+        return
+    for row in rows:
+        print(
+            f'[{row["id"]}] {mask_token(row["token_suffix"])}'
+            f'  created={row["created_at"]}'
+            f'  last_used={row["last_used_at"]}'
+            f'  expires={row["expires_at"]}'
+        )
+
+
 def revoke_tokens(username: str) -> None:
-    with _db.engine.connect() as conn:
-        user = (
-            conn.execute(
-                text('SELECT id FROM users WHERE username = :u'),
-                {'u': username},
-            )
-            .mappings()
-            .first()
-        )
-        if user is None:
-            print(f"User '{username}' not found.", file=sys.stderr)
-            sys.exit(1)
-        result = conn.execute(
-            text('DELETE FROM tokens WHERE user_id = :uid'),
-            {'uid': user['id']},
-        )
-        conn.commit()
-        print(f"Revoked {result.rowcount} token(s) for '{username}'.")
+    count = _db.revoke_tokens_for_username(username)
+    if count is None:
+        print(f"User '{username}' not found.", file=sys.stderr)
+        sys.exit(1)
+    print(f"Revoked {count} token(s) for '{username}'.")
 
 
 def main() -> None:
@@ -82,6 +74,8 @@ def main() -> None:
     sub = parser.add_subparsers(dest='command')
     sub.add_parser('create-user', help='Create a new user')
     sub.add_parser('list-users', help='List all users')
+    list_tok = sub.add_parser('list-tokens', help='List tokens for a user')
+    list_tok.add_argument('username')
     revoke = sub.add_parser('revoke-tokens', help='Revoke all tokens for a user')
     revoke.add_argument('username')
 
@@ -90,6 +84,8 @@ def main() -> None:
         create_user()
     elif args.command == 'list-users':
         list_users()
+    elif args.command == 'list-tokens':
+        list_tokens(args.username)
     elif args.command == 'revoke-tokens':
         revoke_tokens(args.username)
     else:
