@@ -44,6 +44,23 @@ CREATE TABLE IF NOT EXISTS tag_node (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (tag_id, node_id)
 );
+
+CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tokens (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token        TEXT UNIQUE NOT NULL,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP,
+    expires_at   TIMESTAMP
+);
 """
 
 # Shared in-memory SQLite engine (StaticPool so all connections share one DB)
@@ -88,6 +105,8 @@ def engine():
 def clean_db(engine):
     with engine.connect() as conn:
         # Delete in dependency order so FK constraints are satisfied
+        conn.execute(text('DELETE FROM tokens'))
+        conn.execute(text('DELETE FROM users'))
         conn.execute(text('DELETE FROM tag_node'))
         conn.execute(text('DELETE FROM edges'))
         conn.execute(text('DELETE FROM nodes'))
@@ -101,9 +120,36 @@ def client(app, clean_db):
 
 
 @pytest.fixture()
-def make_node(client):
+def auth_token(engine, clean_db):
+    import secrets
+
+    from auth import hash_password
+
+    token = secrets.token_urlsafe(32)
+    pw_hash = hash_password('testpass')
+    with engine.connect() as conn:
+        result = conn.execute(
+            text("INSERT INTO users (username, password_hash) VALUES ('testuser', :h)"),
+            {'h': pw_hash},
+        )
+        user_id = result.lastrowid
+        conn.execute(
+            text('INSERT INTO tokens (user_id, token) VALUES (:uid, :tok)'),
+            {'uid': user_id, 'tok': token},
+        )
+        conn.commit()
+    return token
+
+
+@pytest.fixture()
+def authed_headers(auth_token):
+    return {'Authorization': f'Bearer {auth_token}'}
+
+
+@pytest.fixture()
+def make_node(client, authed_headers):
     def _inner(label='test node', **kwargs):
-        resp = client.post('/v1/nodes', json={'label': label, **kwargs})
+        resp = client.post('/v1/nodes', json={'label': label, **kwargs}, headers=authed_headers)
         assert resp.status_code == 201, resp.json()
         return resp.json()['id']
 
@@ -111,9 +157,9 @@ def make_node(client):
 
 
 @pytest.fixture()
-def make_tag(client):
+def make_tag(client, authed_headers):
     def _inner(name='test tag'):
-        resp = client.post('/v1/tags', json={'name': name})
+        resp = client.post('/v1/tags', json={'name': name}, headers=authed_headers)
         assert resp.status_code == 201, resp.json()
         return resp.json()['id']
 

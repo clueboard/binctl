@@ -5,6 +5,9 @@ info:
 servers:
   - url: /
 
+security:
+  - bearerAuth: []
+
 paths:
   /v1/nodes:
     get:
@@ -184,7 +187,48 @@ paths:
         "404":
           description: Tag not found
 
+  /v1/auth/login:
+    post:
+      x-openapi-router-controller: auth_operations
+      operationId: login
+      tags: [auth]
+      summary: Obtain a bearer token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          description: Invalid credentials
+
+  /v1/auth/logout:
+    post:
+      x-openapi-router-controller: auth_operations
+      operationId: logout
+      tags: [auth]
+      summary: Revoke the current bearer token
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Logged out successfully
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      x-bearerInfoFunc: auth.lookup_token
+
   schemas:
 
     NodePage:
@@ -342,3 +386,20 @@ components:
         updated_at:
           type: string
           format: date-time
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string

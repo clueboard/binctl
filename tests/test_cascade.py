@@ -10,7 +10,7 @@ from sqlalchemy import text
 
 
 class TestNodeDeleteCascade:
-    def test_delete_node_orphans_children(self, client, engine, make_node):
+    def test_delete_node_orphans_children(self, client, engine, make_node, authed_headers):
         parent_id = make_node('parent', is_container=True)
         child_id = make_node('child', parent_id=parent_id)
 
@@ -20,7 +20,7 @@ class TestNodeDeleteCascade:
             conn.commit()
 
         # Child node still exists but has no parent
-        resp = client.get(f'/v1/nodes/{child_id}')
+        resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
         assert resp.status_code == 200
         assert resp.json()['parent_id'] is None
 
@@ -61,7 +61,7 @@ class TestNodeDeleteCascade:
         assert tn_row is None
         assert tag_row is not None
 
-    def test_delete_parent_preserves_grandchild_chain(self, client, engine, make_node):
+    def test_delete_parent_preserves_grandchild_chain(self, client, engine, make_node, authed_headers):
         a_id = make_node('A', is_container=True)
         b_id = make_node('B', is_container=True, parent_id=a_id)
         c_id = make_node('C', parent_id=b_id)
@@ -72,12 +72,12 @@ class TestNodeDeleteCascade:
             conn.commit()
 
         # B and C still exist; C's parent is still B
-        resp = client.get(f'/v1/nodes/{c_id}')
+        resp = client.get(f'/v1/nodes/{c_id}', headers=authed_headers)
         assert resp.status_code == 200
         assert resp.json()['parent_id'] == b_id
 
         # B is now a root (no parent)
-        resp = client.get(f'/v1/nodes/{b_id}')
+        resp = client.get(f'/v1/nodes/{b_id}', headers=authed_headers)
         assert resp.status_code == 200
         assert resp.json()['parent_id'] is None
 

@@ -12,6 +12,8 @@ dependencies = [
     "milc",
     "mysql-connector-python>=8.0",
     "sqlalchemy>=2.0",
+    "passlib[bcrypt]>=1.7",
+    "bcrypt<4.0.0",
 ]
 
 [project.scripts]
@@ -22,7 +24,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["binctl", "web", "routes", "db"]
+py-modules = ["binctl", "web", "routes", "db", "auth", "auth_operations", "manage"]
 
 [dependency-groups]
 dev = [
