@@ -13,12 +13,6 @@ def hash_password(password: str) -> str:
     return _crypt.hash(password)
 
 
-def verify_password(password: str, password_hash: str) -> bool:
-    try:
-        return _crypt.verify(password, password_hash)
-    except Exception:
-        return False
-
 
 _TOKEN_BYTES = 32
 TOKEN_LENGTH = math.ceil(_TOKEN_BYTES * 4 / 3)  # base64url length without padding

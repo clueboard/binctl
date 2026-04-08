@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 
-from auth import hash_token
 from db.direct import (
     create_token,
     create_user,
@@ -16,8 +15,8 @@ def _insert_user(username: str, password: str = 'pass') -> int:
     return create_user(username, password)
 
 
-def _insert_token(user_id: int, token: str = 'sometoken') -> None:
-    create_token(user_id, hash_token(token), token[-4:])
+def _insert_token(user_id: int) -> None:
+    create_token(user_id)
 
 
 class TestCreateUser:
@@ -60,8 +59,8 @@ class TestFetchTokensForUsername:
 
     def test_returns_tokens_for_user(self, clean_db):
         uid = _insert_user('alice')
-        _insert_token(uid, 'token_one')
-        _insert_token(uid, 'token_two')
+        _insert_token(uid)
+        _insert_token(uid)
         rows = fetch_tokens_for_username('alice')
         assert rows is not None
         assert len(rows) == 2
@@ -69,7 +68,7 @@ class TestFetchTokensForUsername:
     def test_does_not_return_other_users_tokens(self, clean_db):
         uid_a = _insert_user('alice')
         _insert_user('bob')
-        _insert_token(uid_a, 'alicetoken')
+        _insert_token(uid_a)
         rows = fetch_tokens_for_username('bob')
         assert rows is not None
         assert list(rows) == []
@@ -93,8 +92,8 @@ class TestRevokeTokensForUsername:
 
     def test_revokes_all_tokens_and_returns_count(self, clean_db):
         uid = _insert_user('alice')
-        _insert_token(uid, 'tok1')
-        _insert_token(uid, 'tok2')
+        _insert_token(uid)
+        _insert_token(uid)
         assert revoke_tokens_for_username('alice') == 2
 
     def test_tokens_are_deleted(self, clean_db):
@@ -106,8 +105,8 @@ class TestRevokeTokensForUsername:
     def test_does_not_revoke_other_users_tokens(self, clean_db):
         uid_a = _insert_user('alice')
         uid_b = _insert_user('bob')
-        _insert_token(uid_a, 'alicetok')
-        _insert_token(uid_b, 'bobtok__')
+        _insert_token(uid_a)
+        _insert_token(uid_b)
         revoke_tokens_for_username('alice')
         bob_tokens = fetch_tokens_for_username('bob')
         assert bob_tokens is not None and len(bob_tokens) == 1

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from auth import hash_token
 from db.direct import create_token, create_user
 
 
@@ -34,14 +33,14 @@ class TestLogin:
 class TestExpiry:
     def test_null_expiry_is_accepted(self, client, clean_db):
         uid = create_user('noexpiry_user', 'pass')
-        create_token(uid, hash_token('noexpirytoken123'), '3123', expires_at=None)
-        resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer noexpirytoken123'})
+        token = create_token(uid)
+        resp = client.get('/v1/nodes', headers={'Authorization': f'Bearer {token}'})
         assert resp.status_code == 200
 
     def test_expired_token_returns_401(self, client, clean_db):
         uid = create_user('expiry_user', 'pass')
-        create_token(uid, hash_token('expiredtoken123'), '3123', expires_at='2000-01-01 00:00:00')
-        resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer expiredtoken123'})
+        token = create_token(uid, expires_at='2000-01-01 00:00:00')
+        resp = client.get('/v1/nodes', headers={'Authorization': f'Bearer {token}'})
         assert resp.status_code == 401
 
 

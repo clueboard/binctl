@@ -74,15 +74,10 @@ def client(app, clean_db):
 
 @pytest.fixture()
 def auth_token(clean_db):
-    import secrets
-
-    from auth import hash_token
     from db.direct import create_token, create_user
 
-    token = secrets.token_urlsafe(32)
     user_id = create_user('testuser', 'testpass')
-    create_token(user_id, hash_token(token), token[-4:])
-    return token
+    return create_token(user_id)
 
 
 @pytest.fixture()

@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 import db
-from auth import hash_password, hash_token, mask_token
+from auth import generate_token, hash_password, hash_token, mask_token
 from db.id_gen import new_id
 
 
@@ -59,16 +59,19 @@ def create_user(username: str, password: str) -> int:
     return user_id
 
 
-def create_token(user_id: int, token_hash: str, token_suffix: str, expires_at: str | None = None) -> None:
+def create_token(user_id: int, expires_at: str | None = None) -> str:
+    """Insert a new token for user_id and return the raw token (only exposure)."""
+    token = generate_token()
     with db.engine.connect() as conn:
         conn.execute(
             text(
                 'INSERT INTO tokens (id, user_id, token_hash, token_suffix, expires_at)'
                 ' VALUES (:id, :uid, :th, :ts, :exp)'
             ),
-            {'id': new_id(), 'uid': user_id, 'th': token_hash, 'ts': token_suffix, 'exp': expires_at},
+            {'id': new_id(), 'uid': user_id, 'th': hash_token(token), 'ts': token[-4:], 'exp': expires_at},
         )
         conn.commit()
+    return token
 
 
 def fetch_all_users() -> Sequence[RowMapping]:

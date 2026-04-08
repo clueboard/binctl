@@ -5,12 +5,21 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from flask import g
+from passlib.context import CryptContext as _CryptContext
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
 import db
+from auth import generate_token, hash_token
 from db.id_gen import new_id
+
+_crypt = _CryptContext(schemes=['bcrypt'], deprecated='auto')
+
+# Pre-computed bcrypt hash used when the username is not found, so verify_password
+# always does full key-stretching regardless of whether the username exists.
+# Prevents timing attacks that distinguish "unknown user" from "wrong password".
+_DUMMY_HASH = '$2b$12$.OT9HVdRiWO/c/eawiYjjOa1.ujHVTxLo3eKEU9gdhRAMwUSvO/ei'
 
 
 def get_db() -> Connection:
@@ -365,6 +374,22 @@ def fetch_user_by_username(username: str) -> RowMapping | None:
     )
 
 
+def verify_password(username: str, password: str) -> RowMapping | None:
+    """Return the user row if credentials are valid, None otherwise.
+
+    Always runs full bcrypt verification to prevent timing attacks.
+    """
+    row = fetch_user_by_username(username)
+    stored_hash = row['password_hash'] if row is not None else _DUMMY_HASH
+    try:
+        valid = _crypt.verify(password, stored_hash)
+    except Exception:
+        valid = False
+    if not valid or row is None:
+        return None
+    return row
+
+
 def update_user_last_login(user_id: int) -> None:
     get_db().execute(
         text('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = :id'),
@@ -372,8 +397,9 @@ def update_user_last_login(user_id: int) -> None:
     )
 
 
-def create_user_session(user_id: int, token_hash: str, token_suffix: str) -> None:
-    """Update last_login_at and insert a new token in a single transaction."""
+def create_user_session(user_id: int) -> str:
+    """Update last_login_at, insert a new token, and return the raw token (only exposure)."""
+    token = generate_token()
     with transactional():
         update_user_last_login(user_id)
         get_db().execute(
@@ -381,8 +407,9 @@ def create_user_session(user_id: int, token_hash: str, token_suffix: str) -> Non
                 'INSERT INTO tokens (id, user_id, token_hash, token_suffix)'
                 ' VALUES (:id, :user_id, :token_hash, :token_suffix)'
             ),
-            {'id': new_id(), 'user_id': user_id, 'token_hash': token_hash, 'token_suffix': token_suffix},
+            {'id': new_id(), 'user_id': user_id, 'token_hash': hash_token(token), 'token_suffix': token[-4:]},
         )
+    return token
 
 
 def revoke_token(token_id: int) -> None:
