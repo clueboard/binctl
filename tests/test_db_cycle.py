@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from db.flask import create_node, ensure_parent_is_valid, get_db, set_parent
+from db.flask import create_node, ensure_parent_is_valid, set_parent
 
 
 class TestNoCycle:
