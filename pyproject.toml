@@ -27,6 +27,7 @@ py-modules = ["binctl", "web", "routes", "db", "auth", "auth_operations", "manag
 
 [dependency-groups]
 dev = [
+    "openapi-python-client>=0.21",
     "ty>=0.0.1a1",
     "pytest>=8.0",
     "pytest-timeout>=2.3",
