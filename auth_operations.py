@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import connexion
 from connexion.exceptions import Unauthorized
 

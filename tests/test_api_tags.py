@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 class TestTagCreate:
     def test_create_tag(self, client, authed_headers):
         resp = client.post('/v1/tags', json={'name': 'electronics'}, headers=authed_headers)

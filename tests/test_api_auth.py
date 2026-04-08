@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from db.direct import create_token, create_user
 
 

@@ -4,8 +4,6 @@ Tests for cycle detection in ensure_parent_is_valid.
 Calls db.flask functions directly inside a Flask app context.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from db.flask import create_node, ensure_parent_is_valid, set_parent

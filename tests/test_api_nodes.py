@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 class TestNodeCreate:
     def test_create_minimal(self, client, authed_headers):
         resp = client.post('/v1/nodes', json={'label': 'shelf-A'}, headers=authed_headers)

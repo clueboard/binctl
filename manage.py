@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """manage.py: Server-side admin operations for binctl."""
 
-from __future__ import annotations
-
 import argparse
 import getpass
 import os

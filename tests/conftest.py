@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 
 # Must be set before any application import — db reads DATABASE_URL at module level

@@ -5,8 +5,6 @@ Instead these tests use two separate test_client() instances in sequence
 to verify last-write-wins semantics and idempotency.
 """
 
-from __future__ import annotations
-
 
 class TestMultiClientWrites:
     def test_sequential_writes_no_corruption(self, app, auth_token, clean_db):
