@@ -1,24 +1,21 @@
+import logging
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
-import logging
 
 from flask import g
-from passlib.context import CryptContext as _CryptContext
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 
 import db
-from auth import generate_token, hash_token
+from auth import generate_token, hash_password, hash_token, verify_password_hash
 from db.id_gen import new_id
 
-_crypt = _CryptContext(schemes=['bcrypt'], deprecated='auto')
-
-# Pre-computed bcrypt hash used when the username is not found, so verify_password
+# Pre-computed scrypt hash used when the username is not found, so verify_password
 # always does full key-stretching regardless of whether the username exists.
 # Prevents timing attacks that distinguish "unknown user" from "wrong password".
-_DUMMY_HASH = '$2b$12$.OT9HVdRiWO/c/eawiYjjOa1.ujHVTxLo3eKEU9gdhRAMwUSvO/ei'
+_DUMMY_HASH = hash_password('dummy')
 
 
 def get_db() -> Connection:
@@ -387,7 +384,7 @@ def verify_password(username: str, password: str) -> RowMapping | None:
     row = get_user(username)
     stored_hash = row['password_hash'] if row else _DUMMY_HASH
     try:
-        valid = _crypt.verify(password, stored_hash)
+        valid = verify_password_hash(password, stored_hash)
     except Exception as e:
         valid = False
         logging.error("Error trying to verify %s's password: %s: %s", username, e.__class__.__name__, e)

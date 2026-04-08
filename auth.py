@@ -1,16 +1,29 @@
 import hashlib
+import hmac
 import math
+import os
 import secrets
-
-from passlib.context import CryptContext
 
 _TOKEN_BYTES = 32
 TOKEN_LENGTH = math.ceil(_TOKEN_BYTES * 4 / 3)  # base64url length without padding
-_crypt = CryptContext(schemes=['bcrypt'], deprecated='auto')
+
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P, _SCRYPT_DKLEN = 2**18, 8, 1, 32
+_SCRYPT_MAXMEM = 512 * 1024 * 1024  # 512 MB; 2× the 256 MB required for N=2**18
 
 
 def hash_password(password: str) -> str:
-    return _crypt.hash(password)
+    salt = os.urandom(32)
+    digest = hashlib.scrypt(password.encode(), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_SCRYPT_DKLEN, maxmem=_SCRYPT_MAXMEM)
+    return f'scrypt:{_SCRYPT_N}:{_SCRYPT_R}:{_SCRYPT_P}:{_SCRYPT_DKLEN}:{salt.hex()}:{digest.hex()}'
+
+
+def verify_password_hash(password: str, stored: str) -> bool:
+    """Raises ValueError on malformed hash; caller handles exceptions."""
+    prefix, n, r, p, dklen, salt_hex, digest_hex = stored.split(':', 6)
+    if prefix != 'scrypt':
+        raise ValueError(f'Unsupported hash type: {prefix!r}')
+    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex), n=int(n), r=int(r), p=int(p), dklen=int(dklen), maxmem=_SCRYPT_MAXMEM)
+    return hmac.compare_digest(digest.hex(), digest_hex)
 
 
 def generate_token() -> str:
