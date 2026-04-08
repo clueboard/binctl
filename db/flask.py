@@ -1,6 +1,7 @@
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
+import logging
 
 from flask import g
 from passlib.context import CryptContext as _CryptContext
@@ -360,7 +361,7 @@ def update_tag(tag_id: int, name: str) -> int:
 # --------------------------------------------------------------------
 
 
-def fetch_user_by_username(username: str) -> RowMapping | None:
+def get_user(username: str) -> RowMapping | None:
     return (
         get_db()
         .execute(
@@ -377,12 +378,13 @@ def verify_password(username: str, password: str) -> RowMapping | None:
 
     Always runs full bcrypt verification to prevent timing attacks.
     """
-    row = fetch_user_by_username(username)
-    stored_hash = row['password_hash'] if row is not None else _DUMMY_HASH
+    row = get_user(username)
+    stored_hash = row['password_hash'] if row else _DUMMY_HASH
     try:
         valid = _crypt.verify(password, stored_hash)
-    except Exception:
+    except Exception as e:
         valid = False
+        logging.error("Error trying to verify %s's password: %s: %s", username, e.__class__.__name__, e)
     if not valid or row is None:
         return None
     return row

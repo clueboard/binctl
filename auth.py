@@ -4,16 +4,13 @@ import secrets
 
 from passlib.context import CryptContext
 
+_TOKEN_BYTES = 32
+TOKEN_LENGTH = math.ceil(_TOKEN_BYTES * 4 / 3)  # base64url length without padding
 _crypt = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 
 def hash_password(password: str) -> str:
     return _crypt.hash(password)
-
-
-
-_TOKEN_BYTES = 32
-TOKEN_LENGTH = math.ceil(_TOKEN_BYTES * 4 / 3)  # base64url length without padding
 
 
 def generate_token() -> str:
