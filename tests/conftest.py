@@ -12,58 +12,6 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 import db as _db  # noqa: E402
 from web import create_app  # noqa: E402
 
-_SQLITE_SCHEMA = """
-CREATE TABLE IF NOT EXISTS nodes (
-    id           INTEGER PRIMARY KEY,
-    label        TEXT NOT NULL,
-    description  TEXT,
-    is_container INTEGER NOT NULL DEFAULT 0,
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS edges (
-    parent_id  INTEGER NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
-    child_id   INTEGER NOT NULL UNIQUE REFERENCES nodes(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (parent_id, child_id),
-    CHECK (parent_id <> child_id)
-);
-
-CREATE TABLE IF NOT EXISTS tags (
-    id         INTEGER PRIMARY KEY,
-    name       TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS tag_node (
-    tag_id     INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    node_id    INTEGER NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (tag_id, node_id)
-);
-
-CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY,
-    username      TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login_at TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS tokens (
-    id           INTEGER PRIMARY KEY,
-    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token_hash   TEXT UNIQUE NOT NULL,
-    token_suffix TEXT NOT NULL,
-    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_used_at TIMESTAMP,
-    expires_at   TIMESTAMP
-);
-"""
-
 # Shared in-memory SQLite engine (StaticPool so all connections share one DB)
 _sqlite_engine = create_engine(
     'sqlite://',
@@ -80,9 +28,13 @@ def _enable_fk(dbapi_conn, _):
     cursor.close()
 
 
+# Load production schema
+with open('schemas/v1.sql', 'r') as f:
+    _schema_sql = f.read()
+
 # Apply schema once at import time
 with _sqlite_engine.connect() as _conn:
-    for _stmt in _SQLITE_SCHEMA.strip().split(';'):
+    for _stmt in _schema_sql.split(';'):
         _stmt = _stmt.strip()
         if _stmt:
             _conn.execute(text(_stmt))
@@ -121,25 +73,15 @@ def client(app, clean_db):
 
 
 @pytest.fixture()
-def auth_token(engine, clean_db):
+def auth_token(clean_db):
     import secrets
 
-    from auth import hash_password, hash_token
-    from db.id_gen import new_id
+    from auth import hash_token
+    from db.direct import create_token, create_user
 
     token = secrets.token_urlsafe(32)
-    pw_hash = hash_password('testpass')
-    user_id = new_id()
-    with engine.connect() as conn:
-        conn.execute(
-            text("INSERT INTO users (id, username, password_hash) VALUES (:id, 'testuser', :h)"),
-            {'id': user_id, 'h': pw_hash},
-        )
-        conn.execute(
-            text('INSERT INTO tokens (id, user_id, token_hash, token_suffix) VALUES (:id, :uid, :th, :ts)'),
-            {'id': new_id(), 'uid': user_id, 'th': hash_token(token), 'ts': token[-4:]},
-        )
-        conn.commit()
+    user_id = create_user('testuser', 'testpass')
+    create_token(user_id, hash_token(token), token[-4:])
     return token
 
 

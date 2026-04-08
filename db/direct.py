@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
 import db
-from auth import hash_token
+from auth import hash_password, hash_token, mask_token
 from db.id_gen import new_id
 
 
@@ -48,11 +48,25 @@ def fetch_token_and_touch(token: str) -> dict | None:
     }
 
 
-def create_user(username: str, password_hash: str) -> None:
+def create_user(username: str, password: str) -> int:
+    user_id = new_id()
     with db.engine.connect() as conn:
         conn.execute(
             text('INSERT INTO users (id, username, password_hash) VALUES (:id, :u, :h)'),
-            {'id': new_id(), 'u': username, 'h': password_hash},
+            {'id': user_id, 'u': username, 'h': hash_password(password)},
+        )
+        conn.commit()
+    return user_id
+
+
+def create_token(user_id: int, token_hash: str, token_suffix: str, expires_at: str | None = None) -> None:
+    with db.engine.connect() as conn:
+        conn.execute(
+            text(
+                'INSERT INTO tokens (id, user_id, token_hash, token_suffix, expires_at)'
+                ' VALUES (:id, :uid, :th, :ts, :exp)'
+            ),
+            {'id': new_id(), 'uid': user_id, 'th': token_hash, 'ts': token_suffix, 'exp': expires_at},
         )
         conn.commit()
 
@@ -64,13 +78,13 @@ def fetch_all_users() -> Sequence[RowMapping]:
         )
 
 
-def fetch_tokens_for_username(username: str) -> Sequence[RowMapping] | None:
+def fetch_tokens_for_username(username: str) -> list[dict] | None:
     """Return tokens for username, or None if the user does not exist."""
     with db.engine.connect() as conn:
         user = conn.execute(text('SELECT id FROM users WHERE username = :u'), {'u': username}).mappings().first()
         if user is None:
             return None
-        return (
+        rows = (
             conn.execute(
                 text(
                     'SELECT id, token_suffix, created_at, last_used_at, expires_at'
@@ -81,6 +95,16 @@ def fetch_tokens_for_username(username: str) -> Sequence[RowMapping] | None:
             .mappings()
             .all()
         )
+    return [
+        {
+            'id': r['id'],
+            'token': mask_token(r['token_suffix']),
+            'created_at': r['created_at'],
+            'last_used_at': r['last_used_at'],
+            'expires_at': r['expires_at'],
+        }
+        for r in rows
+    ]
 
 
 def revoke_tokens_for_username(username: str) -> int | None:

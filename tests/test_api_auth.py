@@ -1,22 +1,12 @@
 from __future__ import annotations
 
-from sqlalchemy import text
-
-from auth import hash_password, hash_token
-
-
-def _create_user(engine, username: str, password: str) -> None:
-    with engine.connect() as conn:
-        conn.execute(
-            text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
-            {'u': username, 'h': hash_password(password)},
-        )
-        conn.commit()
+from auth import hash_token
+from db.direct import create_token, create_user
 
 
 class TestLogin:
-    def test_login_success(self, client, engine, clean_db):
-        _create_user(engine, 'alice', 'secret')
+    def test_login_success(self, client, clean_db):
+        create_user('alice', 'secret')
         resp = client.post('/v1/auth/login', json={'username': 'alice', 'password': 'secret'})
         assert resp.status_code == 200
         body = resp.json()
@@ -24,8 +14,8 @@ class TestLogin:
         assert isinstance(body['token'], str)
         assert len(body['token']) > 10
 
-    def test_login_wrong_password(self, client, engine, clean_db):
-        _create_user(engine, 'bob', 'correct')
+    def test_login_wrong_password(self, client, clean_db):
+        create_user('bob', 'correct')
         resp = client.post('/v1/auth/login', json={'username': 'bob', 'password': 'wrong'})
         assert resp.status_code == 401
 
@@ -33,8 +23,8 @@ class TestLogin:
         resp = client.post('/v1/auth/login', json={'username': 'nobody', 'password': 'x'})
         assert resp.status_code == 401
 
-    def test_login_token_works_on_protected_endpoint(self, client, engine, clean_db):
-        _create_user(engine, 'carol', 'pass')
+    def test_login_token_works_on_protected_endpoint(self, client, clean_db):
+        create_user('carol', 'pass')
         login_resp = client.post('/v1/auth/login', json={'username': 'carol', 'password': 'pass'})
         token = login_resp.json()['token']
         resp = client.get('/v1/nodes', headers={'Authorization': f'Bearer {token}'})
@@ -42,40 +32,15 @@ class TestLogin:
 
 
 class TestExpiry:
-    def test_null_expiry_is_accepted(self, client, engine, clean_db):
-        with engine.connect() as conn:
-            result = conn.execute(
-                text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
-                {'u': 'noexpiry_user', 'h': hash_password('pass')},
-            )
-            conn.execute(
-                text(
-                    'INSERT INTO tokens (user_id, token_hash, token_suffix, expires_at) VALUES (:uid, :th, :ts, NULL)'
-                ),
-                {'uid': result.lastrowid, 'th': hash_token('noexpirytoken123'), 'ts': '3123'},
-            )
-            conn.commit()
+    def test_null_expiry_is_accepted(self, client, clean_db):
+        uid = create_user('noexpiry_user', 'pass')
+        create_token(uid, hash_token('noexpirytoken123'), '3123', expires_at=None)
         resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer noexpirytoken123'})
         assert resp.status_code == 200
 
-    def test_expired_token_returns_401(self, client, engine, clean_db):
-        with engine.connect() as conn:
-            result = conn.execute(
-                text('INSERT INTO users (username, password_hash) VALUES (:u, :h)'),
-                {'u': 'expiry_user', 'h': hash_password('pass')},
-            )
-            conn.execute(
-                text(
-                    'INSERT INTO tokens (user_id, token_hash, token_suffix, expires_at) VALUES (:uid, :th, :ts, :exp)'
-                ),
-                {
-                    'uid': result.lastrowid,
-                    'th': hash_token('expiredtoken123'),
-                    'ts': '3123',
-                    'exp': '2000-01-01 00:00:00',
-                },
-            )
-            conn.commit()
+    def test_expired_token_returns_401(self, client, clean_db):
+        uid = create_user('expiry_user', 'pass')
+        create_token(uid, hash_token('expiredtoken123'), '3123', expires_at='2000-01-01 00:00:00')
         resp = client.get('/v1/nodes', headers={'Authorization': 'Bearer expiredtoken123'})
         assert resp.status_code == 401
 

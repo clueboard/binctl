@@ -13,7 +13,6 @@ if not os.environ.get('DATABASE_URL'):
     sys.exit(1)
 
 import db.direct as _db  # noqa: E402
-from auth import hash_password, mask_token  # noqa: E402
 
 
 def create_user() -> None:
@@ -28,7 +27,7 @@ def create_user() -> None:
         sys.exit(1)
 
     try:
-        _db.create_user(username, hash_password(password))
+        _db.create_user(username, password)
         print(f"User '{username}' created.")
     except Exception as exc:
         print(f'Error: {exc}', file=sys.stderr)
@@ -54,7 +53,7 @@ def list_tokens(username: str) -> None:
         return
     for row in rows:
         print(
-            f'[{row["id"]}] {mask_token(row["token_suffix"])}'
+            f'[{row["id"]}] {row["token"]}'
             f'  created={row["created_at"]}'
             f'  last_used={row["last_used_at"]}'
             f'  expires={row["expires_at"]}'
