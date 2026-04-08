@@ -18,7 +18,6 @@ CREATE TABLE edges (
     parent_id    BIGINT NOT NULL,
     child_id     BIGINT UNIQUE NOT NULL,
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (parent_id, child_id),
     CONSTRAINT fk_edges_parent
         FOREIGN KEY (parent_id) REFERENCES nodes(id)
