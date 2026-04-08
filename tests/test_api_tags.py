@@ -75,6 +75,16 @@ class TestTagPatch:
         resp = client.patch(f'/v1/tags/{tag_id}', json={'name': 'taken'}, headers=authed_headers)
         assert resp.status_code == 409
 
+    def test_patch_missing_name(self, client, make_tag, authed_headers):
+        tag_id = make_tag('sometag')
+        resp = client.patch(f'/v1/tags/{tag_id}', json={}, headers=authed_headers)
+        assert resp.status_code == 400
+
+    def test_patch_empty_name(self, client, make_tag, authed_headers):
+        tag_id = make_tag('sometag')
+        resp = client.patch(f'/v1/tags/{tag_id}', json={'name': ''}, headers=authed_headers)
+        assert resp.status_code == 400
+
     def test_patch_not_found(self, client, authed_headers):
         resp = client.patch('/v1/tags/99999', json={'name': 'x'}, headers=authed_headers)
         assert resp.status_code == 404
