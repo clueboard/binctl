@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 
 from ... import errors
-from ...client import AuthenticatedClient, Client
+from ...client import Client
 from ...models.node import Node
 from ...models.node_create import NodeCreate
 from ...types import Response
@@ -29,7 +29,7 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Node | None:
+def _parse_response(*, client: Client, response: httpx.Response) -> Node | None:
     if response.status_code == 201:
         response_201 = Node.from_dict(response.json())
 
@@ -41,7 +41,7 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[Node]:
+def _build_response(*, client: Client, response: httpx.Response) -> Response[Node]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -52,7 +52,7 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: NodeCreate,
 ) -> Response[Node]:
     """Create a new node
@@ -81,7 +81,7 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: NodeCreate,
 ) -> Node | None:
     """Create a new node
@@ -105,7 +105,7 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: NodeCreate,
 ) -> Response[Node]:
     """Create a new node
@@ -132,7 +132,7 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: NodeCreate,
 ) -> Node | None:
     """Create a new node

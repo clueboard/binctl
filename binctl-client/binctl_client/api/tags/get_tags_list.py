@@ -4,9 +4,9 @@ from typing import Any
 import httpx
 
 from ... import errors
-from ...client import AuthenticatedClient, Client
+from ...client import Client
 from ...models.tag_page import TagPage
-from ...types import Response, Unset
+from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
@@ -14,11 +14,14 @@ def _get_kwargs(
     limit: int | Unset = 100,
     offset: int | Unset = 0,
 ) -> dict[str, Any]:
+
     params: dict[str, Any] = {}
-    if not isinstance(limit, Unset):
-        params["limit"] = limit
-    if not isinstance(offset, Unset):
-        params["offset"] = offset
+
+    params["limit"] = limit
+
+    params["offset"] = offset
+
+    params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
     _kwargs: dict[str, Any] = {
         "method": "get",
@@ -29,9 +32,11 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> TagPage | None:
+def _parse_response(*, client: Client, response: httpx.Response) -> TagPage | None:
     if response.status_code == 200:
-        return TagPage.from_dict(response.json())
+        response_200 = TagPage.from_dict(response.json())
+
+        return response_200
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -39,7 +44,7 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[TagPage]:
+def _build_response(*, client: Client, response: httpx.Response) -> Response[TagPage]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -50,11 +55,15 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
 ) -> Response[TagPage]:
     """List all tags
+
+    Args:
+        limit (int | Unset):  Default: 100.
+        offset (int | Unset):  Default: 0.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -64,7 +73,10 @@ def sync_detailed(
         Response[TagPage]
     """
 
-    kwargs = _get_kwargs(limit=limit, offset=offset)
+    kwargs = _get_kwargs(
+        limit=limit,
+        offset=offset,
+    )
 
     response = client.get_httpx_client().request(
         **kwargs,
@@ -75,11 +87,15 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
 ) -> TagPage | None:
     """List all tags
+
+    Args:
+        limit (int | Unset):  Default: 100.
+        offset (int | Unset):  Default: 0.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -98,11 +114,15 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
 ) -> Response[TagPage]:
     """List all tags
+
+    Args:
+        limit (int | Unset):  Default: 100.
+        offset (int | Unset):  Default: 0.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -112,7 +132,10 @@ async def asyncio_detailed(
         Response[TagPage]
     """
 
-    kwargs = _get_kwargs(limit=limit, offset=offset)
+    kwargs = _get_kwargs(
+        limit=limit,
+        offset=offset,
+    )
 
     response = await client.get_async_httpx_client().request(**kwargs)
 
@@ -121,11 +144,15 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
 ) -> TagPage | None:
     """List all tags
+
+    Args:
+        limit (int | Unset):  Default: 100.
+        offset (int | Unset):  Default: 0.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

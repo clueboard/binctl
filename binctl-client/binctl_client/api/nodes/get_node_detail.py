@@ -5,7 +5,7 @@ from urllib.parse import quote
 import httpx
 
 from ... import errors
-from ...client import AuthenticatedClient, Client
+from ...client import Client
 from ...models.node import Node
 from ...types import Response
 
@@ -24,7 +24,7 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Any | Node | None:
+def _parse_response(*, client: Client, response: httpx.Response) -> Any | Node | None:
     if response.status_code == 200:
         response_200 = Node.from_dict(response.json())
 
@@ -40,7 +40,7 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[Any | Node]:
+def _build_response(*, client: Client, response: httpx.Response) -> Response[Any | Node]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -52,7 +52,7 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 def sync_detailed(
     node_id: int,
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
 ) -> Response[Any | Node]:
     """Get a node by ID
 
@@ -81,7 +81,7 @@ def sync_detailed(
 def sync(
     node_id: int,
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
 ) -> Any | Node | None:
     """Get a node by ID
 
@@ -105,7 +105,7 @@ def sync(
 async def asyncio_detailed(
     node_id: int,
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
 ) -> Response[Any | Node]:
     """Get a node by ID
 
@@ -132,7 +132,7 @@ async def asyncio_detailed(
 async def asyncio(
     node_id: int,
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
 ) -> Any | Node | None:
     """Get a node by ID
 

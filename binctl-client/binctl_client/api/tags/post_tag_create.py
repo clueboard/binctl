@@ -4,7 +4,7 @@ from typing import Any
 import httpx
 
 from ... import errors
-from ...client import AuthenticatedClient, Client
+from ...client import Client
 from ...models.tag import Tag
 from ...models.tag_create import TagCreate
 from ...types import Response
@@ -29,7 +29,7 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Tag | None:
+def _parse_response(*, client: Client, response: httpx.Response) -> Tag | None:
     if response.status_code == 201:
         response_201 = Tag.from_dict(response.json())
 
@@ -41,7 +41,7 @@ def _parse_response(*, client: AuthenticatedClient | Client, response: httpx.Res
         return None
 
 
-def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Response) -> Response[Tag]:
+def _build_response(*, client: Client, response: httpx.Response) -> Response[Tag]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -52,7 +52,7 @@ def _build_response(*, client: AuthenticatedClient | Client, response: httpx.Res
 
 def sync_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: TagCreate,
 ) -> Response[Tag]:
     """Create a tag
@@ -81,7 +81,7 @@ def sync_detailed(
 
 def sync(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: TagCreate,
 ) -> Tag | None:
     """Create a tag
@@ -105,7 +105,7 @@ def sync(
 
 async def asyncio_detailed(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: TagCreate,
 ) -> Response[Tag]:
     """Create a tag
@@ -132,7 +132,7 @@ async def asyncio_detailed(
 
 async def asyncio(
     *,
-    client: AuthenticatedClient | Client,
+    client: Client,
     body: TagCreate,
 ) -> Tag | None:
     """Create a tag

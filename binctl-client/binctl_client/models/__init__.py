@@ -1,5 +1,7 @@
 """Contains all the data models used in inputs/outputs"""
 
+from .login_request import LoginRequest
+from .login_response import LoginResponse
 from .node import Node
 from .node_child import NodeChild
 from .node_create import NodeCreate
@@ -11,6 +13,8 @@ from .tag_page import TagPage
 from .tag_update import TagUpdate
 
 __all__ = (
+    "LoginRequest",
+    "LoginResponse",
     "Node",
     "NodeChild",
     "NodeCreate",

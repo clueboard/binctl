@@ -26,8 +26,10 @@ from milc import cli
 def _get_client(cli) -> Client:
     """Construct an API client from config/args."""
     base_url = cli.config.general.base_url
-    # openapi-python-client Client usually takes base_url and optional headers/cookies
-    return Client(base_url=base_url)
+    token = cli.config.general.token
+    if token:
+        return Client(base_url=base_url, token=token)
+    return Client(base_url=base_url, username=cli.config.general.username, password=cli.config.general.password)
 
 
 def _echo_json(cli, data):
@@ -51,6 +53,9 @@ def _check_response(result, label: str):
     default='http://localhost:5000',
     help='Base URL for the binctl API (e.g. http://localhost:5000)',
 )
+@cli.argument('--token', default=None, help='Bearer token for authentication')
+@cli.argument('--username', default=None, help='Username for login-based authentication')
+@cli.argument('--password', default=None, help='Password for login-based authentication')
 @cli.entrypoint('binctl: manage storage nodes and tags.')
 def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""

@@ -1,28 +1,24 @@
 from http import HTTPStatus
 from typing import Any, cast
-from urllib.parse import quote
 
 import httpx
 
 from ... import errors
 from ...client import Client
-from ...models.node import Node
-from ...models.node_update import NodeUpdate
+from ...models.login_request import LoginRequest
+from ...models.login_response import LoginResponse
 from ...types import Response
 
 
 def _get_kwargs(
-    node_id: int,
     *,
-    body: NodeUpdate,
+    body: LoginRequest,
 ) -> dict[str, Any]:
     headers: dict[str, Any] = {}
 
     _kwargs: dict[str, Any] = {
-        "method": "patch",
-        "url": "/v1/nodes/{node_id}".format(
-            node_id=quote(str(node_id), safe=""),
-        ),
+        "method": "post",
+        "url": "/v1/auth/login",
     }
 
     _kwargs["json"] = body.to_dict()
@@ -33,15 +29,15 @@ def _get_kwargs(
     return _kwargs
 
 
-def _parse_response(*, client: Client, response: httpx.Response) -> Any | Node | None:
+def _parse_response(*, client: Client, response: httpx.Response) -> Any | LoginResponse | None:
     if response.status_code == 200:
-        response_200 = Node.from_dict(response.json())
+        response_200 = LoginResponse.from_dict(response.json())
 
         return response_200
 
-    if response.status_code == 404:
-        response_404 = cast(Any, None)
-        return response_404
+    if response.status_code == 401:
+        response_401 = cast(Any, None)
+        return response_401
 
     if client.raise_on_unexpected_status:
         raise errors.UnexpectedStatus(response.status_code, response.content)
@@ -49,7 +45,7 @@ def _parse_response(*, client: Client, response: httpx.Response) -> Any | Node |
         return None
 
 
-def _build_response(*, client: Client, response: httpx.Response) -> Response[Any | Node]:
+def _build_response(*, client: Client, response: httpx.Response) -> Response[Any | LoginResponse]:
     return Response(
         status_code=HTTPStatus(response.status_code),
         content=response.content,
@@ -59,27 +55,24 @@ def _build_response(*, client: Client, response: httpx.Response) -> Response[Any
 
 
 def sync_detailed(
-    node_id: int,
     *,
     client: Client,
-    body: NodeUpdate,
-) -> Response[Any | Node]:
-    """Update an existing node
+    body: LoginRequest,
+) -> Response[Any | LoginResponse]:
+    """Obtain a bearer token
 
     Args:
-        node_id (int):
-        body (NodeUpdate):
+        body (LoginRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Any | Node]
+        Response[Any | LoginResponse]
     """
 
     kwargs = _get_kwargs(
-        node_id=node_id,
         body=body,
     )
 
@@ -91,54 +84,48 @@ def sync_detailed(
 
 
 def sync(
-    node_id: int,
     *,
     client: Client,
-    body: NodeUpdate,
-) -> Any | Node | None:
-    """Update an existing node
+    body: LoginRequest,
+) -> Any | LoginResponse | None:
+    """Obtain a bearer token
 
     Args:
-        node_id (int):
-        body (NodeUpdate):
+        body (LoginRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Any | Node
+        Any | LoginResponse
     """
 
     return sync_detailed(
-        node_id=node_id,
         client=client,
         body=body,
     ).parsed
 
 
 async def asyncio_detailed(
-    node_id: int,
     *,
     client: Client,
-    body: NodeUpdate,
-) -> Response[Any | Node]:
-    """Update an existing node
+    body: LoginRequest,
+) -> Response[Any | LoginResponse]:
+    """Obtain a bearer token
 
     Args:
-        node_id (int):
-        body (NodeUpdate):
+        body (LoginRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Response[Any | Node]
+        Response[Any | LoginResponse]
     """
 
     kwargs = _get_kwargs(
-        node_id=node_id,
         body=body,
     )
 
@@ -148,28 +135,25 @@ async def asyncio_detailed(
 
 
 async def asyncio(
-    node_id: int,
     *,
     client: Client,
-    body: NodeUpdate,
-) -> Any | Node | None:
-    """Update an existing node
+    body: LoginRequest,
+) -> Any | LoginResponse | None:
+    """Obtain a bearer token
 
     Args:
-        node_id (int):
-        body (NodeUpdate):
+        body (LoginRequest):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx.TimeoutException: If the request takes longer than Client.timeout.
 
     Returns:
-        Any | Node
+        Any | LoginResponse
     """
 
     return (
         await asyncio_detailed(
-            node_id=node_id,
             client=client,
             body=body,
         )

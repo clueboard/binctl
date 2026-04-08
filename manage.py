@@ -9,8 +9,9 @@ if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)
 
-import db.direct as _db  # noqa: E402
 from milc import cli  # noqa: E402
+
+import db.direct as _db  # noqa: E402
 
 
 @cli.entrypoint('manage: binctl server administration.')

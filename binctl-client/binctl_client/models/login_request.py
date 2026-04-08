@@ -6,43 +6,51 @@ from typing import Any, TypeVar
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
-T = TypeVar("T", bound="TagUpdate")
+T = TypeVar("T", bound="LoginRequest")
 
 
 @_attrs_define
-class TagUpdate:
+class LoginRequest:
     """
     Attributes:
-        name (str | Unset):
+        username (str):
+        password (str):
     """
 
-    name: str | Unset = UNSET
+    username: str
+    password: str
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        name = self.name
+        username = self.username
+
+        password = self.password
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
-        field_dict.update({})
-        if name is not UNSET:
-            field_dict["name"] = name
+        field_dict.update(
+            {
+                "username": username,
+                "password": password,
+            }
+        )
 
         return field_dict
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
         d = dict(src_dict)
-        name = d.pop("name", UNSET)
+        username = d.pop("username")
 
-        tag_update = cls(
-            name=name,
+        password = d.pop("password")
+
+        login_request = cls(
+            username=username,
+            password=password,
         )
 
-        tag_update.additional_properties = d
-        return tag_update
+        login_request.additional_properties = d
+        return login_request
 
     @property
     def additional_keys(self) -> list[str]:
