@@ -34,6 +34,7 @@ def transactional() -> Iterator[Connection]:
 # Helpers
 # --------------------------------------------------------------------
 
+
 def iso(dt: datetime | str | None) -> str | None:
     if dt is None:
         return None
@@ -66,31 +67,44 @@ def tag_row_to_dict(row: RowMapping) -> dict:
 # Node helpers
 # --------------------------------------------------------------------
 
+
 def fetch_node(node_id: int) -> RowMapping | None:
-    return get_db().execute(
-        text(
-            """
+    return (
+        get_db()
+        .execute(
+            text(
+                """
             SELECT id, label, description, is_container, created_at, updated_at
             FROM nodes
             WHERE id = :id
             """
-        ),
-        {'id': node_id},
-    ).mappings().first()
+            ),
+            {'id': node_id},
+        )
+        .mappings()
+        .first()
+    )
 
 
 def fetch_parent_id(node_id: int) -> int | None:
-    row = get_db().execute(
-        text('SELECT parent_id FROM edges WHERE child_id = :id'),
-        {'id': node_id},
-    ).mappings().first()
+    row = (
+        get_db()
+        .execute(
+            text('SELECT parent_id FROM edges WHERE child_id = :id'),
+            {'id': node_id},
+        )
+        .mappings()
+        .first()
+    )
     return row['parent_id'] if row else None
 
 
 def fetch_children(node_id: int) -> list[dict]:
-    rows = get_db().execute(
-        text(
-            """
+    rows = (
+        get_db()
+        .execute(
+            text(
+                """
             SELECT n.id, n.label, n.description, n.is_container,
                    n.created_at, n.updated_at
             FROM edges e
@@ -98,32 +112,45 @@ def fetch_children(node_id: int) -> list[dict]:
             WHERE e.parent_id = :id
             ORDER BY n.id
             """
-        ),
-        {'id': node_id},
-    ).mappings().all()
+            ),
+            {'id': node_id},
+        )
+        .mappings()
+        .all()
+    )
     return [node_row_to_dict(r) for r in rows]
 
 
 def node_has_children(node_id: int) -> bool:
-    return get_db().execute(
-        text('SELECT 1 FROM edges WHERE parent_id = :id LIMIT 1'),
-        {'id': node_id},
-    ).first() is not None
+    return (
+        get_db()
+        .execute(
+            text('SELECT 1 FROM edges WHERE parent_id = :id LIMIT 1'),
+            {'id': node_id},
+        )
+        .first()
+        is not None
+    )
 
 
 def fetch_tags_for_node(node_id: int) -> list[dict]:
-    rows = get_db().execute(
-        text(
-            """
+    rows = (
+        get_db()
+        .execute(
+            text(
+                """
             SELECT t.id, t.name, t.created_at, t.updated_at
             FROM tag_node tn
             JOIN tags t ON t.id = tn.tag_id
             WHERE tn.node_id = :id
             ORDER BY t.name
             """
-        ),
-        {'id': node_id},
-    ).mappings().all()
+            ),
+            {'id': node_id},
+        )
+        .mappings()
+        .all()
+    )
     return [
         {'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])}
         for r in rows
@@ -138,10 +165,15 @@ def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
     if child_id is not None and parent_id == child_id:
         raise ValueError('parent_id cannot equal node_id')
 
-    row = get_db().execute(
-        text('SELECT id, is_container FROM nodes WHERE id = :id'),
-        {'id': parent_id},
-    ).mappings().first()
+    row = (
+        get_db()
+        .execute(
+            text('SELECT id, is_container FROM nodes WHERE id = :id'),
+            {'id': parent_id},
+        )
+        .mappings()
+        .first()
+    )
 
     if not row:
         raise ValueError(f'parent_id {parent_id} does not exist')
@@ -150,9 +182,11 @@ def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
         raise ValueError('parent_id must refer to a container node')
 
     if child_id is not None:
-        cycle_row = get_db().execute(
-            text(
-                """
+        cycle_row = (
+            get_db()
+            .execute(
+                text(
+                    """
                 WITH RECURSIVE ancestors AS (
                     SELECT parent_id AS ancestor_id
                     FROM   edges
@@ -164,9 +198,11 @@ def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
                 )
                 SELECT 1 FROM ancestors WHERE ancestor_id = :child_id LIMIT 1
                 """
-            ),
-            {'parent_id': parent_id, 'child_id': child_id},
-        ).first()
+                ),
+                {'parent_id': parent_id, 'child_id': child_id},
+            )
+            .first()
+        )
         if cycle_row:
             raise ValueError('setting this parent would create a cycle')
 
@@ -197,17 +233,22 @@ def count_nodes() -> int:
 
 
 def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
-    return get_db().execute(
-        text(
-            """
+    return (
+        get_db()
+        .execute(
+            text(
+                """
             SELECT id, label, description, is_container, created_at, updated_at
             FROM nodes
             ORDER BY id
             LIMIT :limit OFFSET :offset
             """
-        ),
-        {'limit': limit, 'offset': offset},
-    ).mappings().all()
+            ),
+            {'limit': limit, 'offset': offset},
+        )
+        .mappings()
+        .all()
+    )
 
 
 def create_node(label: str, description: str | None, is_container: bool) -> int:
@@ -236,11 +277,17 @@ def update_node_fields(node_id: int, fields: dict) -> None:
 # Tag helpers
 # --------------------------------------------------------------------
 
+
 def fetch_tag(tag_id: int) -> RowMapping | None:
-    return get_db().execute(
-        text('SELECT id, name, created_at, updated_at FROM tags WHERE id = :id'),
-        {'id': tag_id},
-    ).mappings().first()
+    return (
+        get_db()
+        .execute(
+            text('SELECT id, name, created_at, updated_at FROM tags WHERE id = :id'),
+            {'id': tag_id},
+        )
+        .mappings()
+        .first()
+    )
 
 
 def count_tags() -> int:
@@ -248,23 +295,30 @@ def count_tags() -> int:
 
 
 def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
-    return get_db().execute(
-        text(
-            """
+    return (
+        get_db()
+        .execute(
+            text(
+                """
             SELECT id, name, created_at, updated_at
             FROM tags
             ORDER BY name
             LIMIT :limit OFFSET :offset
             """
-        ),
-        {'limit': limit, 'offset': offset},
-    ).mappings().all()
+            ),
+            {'limit': limit, 'offset': offset},
+        )
+        .mappings()
+        .all()
+    )
 
 
 def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
-    return get_db().execute(
-        text(
-            """
+    return (
+        get_db()
+        .execute(
+            text(
+                """
             SELECT n.id, n.label, n.description, n.is_container,
                    n.created_at, n.updated_at
             FROM tag_node tn
@@ -272,9 +326,12 @@ def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
             WHERE tn.tag_id = :id
             ORDER BY n.id
             """
-        ),
-        {'id': tag_id},
-    ).mappings().all()
+            ),
+            {'id': tag_id},
+        )
+        .mappings()
+        .all()
+    )
 
 
 def create_tag(name: str) -> int:
@@ -294,6 +351,7 @@ def update_tag(tag_id: int, name: str) -> int:
 # --------------------------------------------------------------------
 # Auth helpers
 # --------------------------------------------------------------------
+
 
 def fetch_user_by_username(username: str) -> RowMapping | None:
     return (

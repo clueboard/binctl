@@ -117,9 +117,7 @@ class TestRevokeTokensForUsername:
         _insert_token(engine, uid)
         revoke_tokens_for_username('alice')
         with engine.connect() as conn:
-            count = conn.execute(
-                text('SELECT COUNT(*) FROM tokens WHERE user_id = :uid'), {'uid': uid}
-            ).scalar()
+            count = conn.execute(text('SELECT COUNT(*) FROM tokens WHERE user_id = :uid'), {'uid': uid}).scalar()
         assert count == 0
 
     def test_does_not_revoke_other_users_tokens(self, engine, clean_db):
@@ -129,7 +127,5 @@ class TestRevokeTokensForUsername:
         _insert_token(engine, uid_b, 'bobtok__')
         revoke_tokens_for_username('alice')
         with engine.connect() as conn:
-            count = conn.execute(
-                text('SELECT COUNT(*) FROM tokens WHERE user_id = :uid'), {'uid': uid_b}
-            ).scalar()
+            count = conn.execute(text('SELECT COUNT(*) FROM tokens WHERE user_id = :uid'), {'uid': uid_b}).scalar()
         assert count == 1

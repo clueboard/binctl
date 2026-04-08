@@ -59,19 +59,15 @@ def create_user(username: str, password_hash: str) -> None:
 
 def fetch_all_users() -> Sequence[RowMapping]:
     with db.engine.connect() as conn:
-        return conn.execute(
-            text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')
-        ).mappings().all()
+        return (
+            conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()
+        )
 
 
 def fetch_tokens_for_username(username: str) -> Sequence[RowMapping] | None:
     """Return tokens for username, or None if the user does not exist."""
     with db.engine.connect() as conn:
-        user = (
-            conn.execute(text('SELECT id FROM users WHERE username = :u'), {'u': username})
-            .mappings()
-            .first()
-        )
+        user = conn.execute(text('SELECT id FROM users WHERE username = :u'), {'u': username}).mappings().first()
         if user is None:
             return None
         return (
@@ -90,11 +86,7 @@ def fetch_tokens_for_username(username: str) -> Sequence[RowMapping] | None:
 def revoke_tokens_for_username(username: str) -> int | None:
     """Delete all tokens for username. Returns rowcount, or None if user not found."""
     with db.engine.connect() as conn:
-        user = (
-            conn.execute(text('SELECT id FROM users WHERE username = :u'), {'u': username})
-            .mappings()
-            .first()
-        )
+        user = conn.execute(text('SELECT id FROM users WHERE username = :u'), {'u': username}).mappings().first()
         if user is None:
             return None
         result = conn.execute(
