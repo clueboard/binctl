@@ -379,7 +379,7 @@ def get_user(username: str) -> RowMapping | None:
 def verify_password(username: str, password: str) -> RowMapping | None:
     """Return the user row if credentials are valid, None otherwise.
 
-    Always runs full bcrypt verification to prevent timing attacks.
+    Always runs full scrypt verification to prevent timing attacks.
     """
     row = get_user(username)
     stored_hash = row['password_hash'] if row else _DUMMY_HASH

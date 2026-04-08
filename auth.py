@@ -18,11 +18,14 @@ def hash_password(password: str) -> str:
 
 
 def verify_password_hash(password: str, stored: str) -> bool:
-    """Raises ValueError on malformed hash; caller handles exceptions."""
+    """Raises ValueError or binascii.Error on malformed or tampered hash; caller handles exceptions."""
     prefix, n, r, p, dklen, salt_hex, digest_hex = stored.split(':', 6)
     if prefix != 'scrypt':
         raise ValueError(f'Unsupported hash type: {prefix!r}')
-    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex), n=int(n), r=int(r), p=int(p), dklen=int(dklen), maxmem=_SCRYPT_MAXMEM)
+    n, r, p, dklen = int(n), int(r), int(p), int(dklen)
+    if (n, r, p, dklen) != (_SCRYPT_N, _SCRYPT_R, _SCRYPT_P, _SCRYPT_DKLEN):
+        raise ValueError(f'Unexpected scrypt parameters: n={n} r={r} p={p} dklen={dklen}')
+    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex), n=n, r=r, p=p, dklen=dklen, maxmem=_SCRYPT_MAXMEM)
     return hmac.compare_digest(digest.hex(), digest_hex)
 
 
