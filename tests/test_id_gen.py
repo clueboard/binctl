@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import datetime
 import time
+import warnings
+from unittest.mock import patch
+
+import pytest
 
 from db.id_gen import EPOCH_US, new_id
 
@@ -33,6 +37,23 @@ def test_no_signed_overflow_before_2091():
     max_id = (ts << 12) | 0xFFF  # all 12 random bits set
     assert max_id <= (1 << 63) - 1
 
+
+
+def test_no_warning_before_2085():
+    import importlib
+    import db.id_gen as id_gen_mod
+    with patch('time.time', return_value=3_629_145_599.999):  # one second before 2085
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            importlib.reload(id_gen_mod)  # must not raise
+
+
+def test_warning_emitted_from_2085():
+    import importlib
+    import db.id_gen as id_gen_mod
+    with patch('time.time', return_value=3_629_145_600.0):  # 2085-01-01 00:00:00 UTC
+        with pytest.warns(UserWarning, match='2091'):
+            importlib.reload(id_gen_mod)
 
 
 def test_calls_separated_in_time_are_ordered():
