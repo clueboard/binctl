@@ -163,3 +163,10 @@ class TestNodePatch:
         make_node('item', parent_id=parent_id)
         resp = client.patch(f'/v1/nodes/{parent_id}', json={'is_container': False}, headers=authed_headers)
         assert resp.status_code == 400
+
+
+def test_count_nodes_returns_int(app):
+    with app.app.app_context():
+        from db.flask import count_nodes
+        result = count_nodes()
+        assert isinstance(result, int)

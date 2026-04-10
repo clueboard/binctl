@@ -234,7 +234,7 @@ def replace_node_tags(node_id: int, tag_ids: list[int]) -> None:
 
 
 def count_nodes() -> int:
-    return get_db().execute(text('SELECT COUNT(*) FROM nodes')).scalar()
+    return get_db().execute(text('SELECT COUNT(*) FROM nodes')).scalar() or 0
 
 
 def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
@@ -302,7 +302,7 @@ def fetch_tag(tag_id: int) -> RowMapping | None:
 
 
 def count_tags() -> int:
-    return get_db().execute(text('SELECT COUNT(*) FROM tags')).scalar()
+    return get_db().execute(text('SELECT COUNT(*) FROM tags')).scalar() or 0
 
 
 def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:

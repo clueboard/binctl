@@ -88,3 +88,10 @@ class TestTagPatch:
     def test_patch_not_found(self, client, authed_headers):
         resp = client.patch('/v1/tags/99999', json={'name': 'x'}, headers=authed_headers)
         assert resp.status_code == 404
+
+
+def test_count_tags_returns_int(app):
+    with app.app.app_context():
+        from db.flask import count_tags
+        result = count_tags()
+        assert isinstance(result, int)
