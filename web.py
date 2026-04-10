@@ -37,7 +37,11 @@ def create_app():
         raise ValueError("CORS_ORIGINS='*' is not allowed; specify explicit origins")
     allow_origins = [o.strip() for o in cors_origins_raw.split(',') if o.strip()]
 
-    max_age = int(os.environ.get('CORS_MAX_AGE', 600))
+    _cors_max_age_raw = os.environ.get('CORS_MAX_AGE', '600')
+    try:
+        max_age = int(_cors_max_age_raw)
+    except ValueError:
+        raise ValueError(f"CORS_MAX_AGE must be an integer (got {_cors_max_age_raw!r})")
 
     cx_app = connexion.App(__name__, specification_dir='.')
     cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=True)
