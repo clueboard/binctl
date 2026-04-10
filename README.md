@@ -11,15 +11,17 @@ It's backed by a Flask API with a CLI frontend.
 
 ## Setup
 
-1. Copy `.env.example` and fill in your database credentials:
+1. Copy `.env.example` and fill in your database URL:
    ```
    cp .env.example .env
    ```
-2. Set the `DATABASE_URL` environment variable before starting the server:
-   ```
-   export DATABASE_URL=mysql+pymysql://user:password@localhost/binctl
-   ```
-   The format follows SQLAlchemy's URL scheme. MySQL via `pymysql` is the expected driver, but any SQLAlchemy-compatible URL will work.
+2. Install the optional driver for your database (SQLite needs none — it's built into Python):
+   - **MySQL:** `pip install 'binctl[mysql]'`
+   - **PostgreSQL:** `pip install 'binctl[postgresql]'`
+3. Set `DATABASE_URL` before starting the server:
+   - SQLite: `sqlite:///binctl.db`
+   - MySQL: `mysql+pymysql://user:password@localhost/binctl`
+   - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
 
 Current CLI subcommands:
 

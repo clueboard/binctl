@@ -9,10 +9,12 @@ dependencies = [
     "connexion[flask]>=3.3",
     "gunicorn>=21.0",
     "milc",
-    "mysql-connector-python>=8.0",
     "sqlalchemy>=2.0",
-
 ]
+
+[project.optional-dependencies]
+mysql = ["pymysql"]
+postgresql = ["psycopg2-binary"]
 
 [project.scripts]
 binctl = "binctl:cli"
