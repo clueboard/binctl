@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 # Must be set before any application import — db reads DATABASE_URL at module level
 os.environ['DATABASE_URL'] = 'sqlite://'
@@ -9,6 +10,9 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 
 import db as _db  # noqa: E402
 from web import create_app  # noqa: E402
+
+# Absolute path to schema file
+_SCHEMA = Path(__file__).parent.parent / 'schemas' / 'v1.sql'
 
 # Shared in-memory SQLite engine (StaticPool so all connections share one DB)
 _sqlite_engine = create_engine(
@@ -27,7 +31,7 @@ def _enable_fk(dbapi_conn, _):
 
 
 # Load production schema
-with open('schemas/v1.sql', 'r') as f:
+with open(_SCHEMA, 'r') as f:
     _schema_sql = f.read()
 
 # Apply schema once at import time
