@@ -26,6 +26,12 @@ def get_db() -> Connection:
 
 @contextmanager
 def transactional() -> Iterator[Connection]:
+    """Wrap the current Flask-g connection in a commit/rollback block.
+
+    WARNING: Nesting transactional() is not supported. The inner call reuses
+    the same connection and commits on exit, which may commit data the outer
+    caller expected to hold until its own exit. Do not nest transactional().
+    """
     conn = get_db()
     try:
         yield conn
