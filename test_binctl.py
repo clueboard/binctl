@@ -27,6 +27,9 @@ def _make_cli(args):
     cli = MagicMock()
     cli.args = args
     cli.config.general.base_url = args.base_url
+    cli.config.general.token = 'test-token'  # provide token to avoid credential validation
+    cli.config.general.username = None
+    cli.config.general.password = None
     return cli
 
 
@@ -34,44 +37,47 @@ class TestNodeCreate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         """post_node_create.sync must be called with body=, not json_body=."""
         with patch('binctl_client.api.nodes.post_node_create.sync') as mock_sync:
-            mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
-            # Import here so patches are in place
-            import binctl as bc
+            with patch('binctl.Client'):
+                mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+                # Import here so patches are in place
+                import binctl as bc
 
-            cli = _make_cli(_make_cli_args(label='test', tag_id=[]))
-            bc._node_create(cli)
+                cli = _make_cli(_make_cli_args(label='test', tag_id=[]))
+                bc._node_create(cli)
 
-            _, kwargs = mock_sync.call_args
-            self.assertIn('body', kwargs, "Expected 'body' kwarg")
-            self.assertNotIn('json_body', kwargs, "Found unexpected 'json_body' kwarg")
+                _, kwargs = mock_sync.call_args
+                self.assertIn('body', kwargs, "Expected 'body' kwarg")
+                self.assertNotIn('json_body', kwargs, "Found unexpected 'json_body' kwarg")
 
 
 class TestNodeUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         with patch('binctl_client.api.nodes.patch_node_update.sync') as mock_sync:
-            mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
-            import binctl as bc
+            with patch('binctl.Client'):
+                mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+                import binctl as bc
 
-            cli = _make_cli(_make_cli_args(label='updated', node_id=1))
-            bc._node_update(cli, node_id=1)
+                cli = _make_cli(_make_cli_args(label='updated', node_id=1))
+                bc._node_update(cli, node_id=1)
 
-            _, kwargs = mock_sync.call_args
-            self.assertIn('body', kwargs)
-            self.assertNotIn('json_body', kwargs)
+                _, kwargs = mock_sync.call_args
+                self.assertIn('body', kwargs)
+                self.assertNotIn('json_body', kwargs)
 
 
 class TestTagCreate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         with patch('binctl_client.api.tags.post_tag_create.sync') as mock_sync:
-            mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
-            import binctl as bc
+            with patch('binctl.Client'):
+                mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+                import binctl as bc
 
-            cli = _make_cli(_make_cli_args(name='mytag'))
-            bc._tag_create(cli)
+                cli = _make_cli(_make_cli_args(name='mytag'))
+                bc._tag_create(cli)
 
-            _, kwargs = mock_sync.call_args
-            self.assertIn('body', kwargs)
-            self.assertNotIn('json_body', kwargs)
+                _, kwargs = mock_sync.call_args
+                self.assertIn('body', kwargs)
+                self.assertNotIn('json_body', kwargs)
 
 
 class TestTagUpdate(unittest.TestCase):
