@@ -26,6 +26,9 @@ Current CLI subcommands:
 - `binctl node list|get|create|update` - manage nodes
 - `binctl tag list|get|create|update`  - manage tags
 
+> **Note:** The API does not yet support DELETE. Nodes and tags can be created
+> and updated but not removed via the API.
+
 ## Tests / CI
 
 The following must pass before merging:
