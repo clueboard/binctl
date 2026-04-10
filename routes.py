@@ -52,8 +52,9 @@ def get_tags_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total = count_tags()
-    rows = fetch_tags_page(limit, offset)
+    with transactional():
+        total = count_tags()
+        rows = fetch_tags_page(limit, offset)
 
     return jsonify(
         {
@@ -144,8 +145,9 @@ def get_nodes_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total = count_nodes()
-    rows = fetch_nodes_page(limit, offset)
+    with transactional():
+        total = count_nodes()
+        rows = fetch_nodes_page(limit, offset)
 
     return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': [node_row_to_dict(r) for r in rows]})
 

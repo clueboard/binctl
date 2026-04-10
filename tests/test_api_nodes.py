@@ -90,6 +90,15 @@ class TestNodeList:
         resp = client.get('/v1/nodes', params={'limit': 0}, headers=authed_headers)
         assert resp.status_code == 400
 
+    def test_list_total_matches_items_count(self, client, make_node, authed_headers):
+        """total must equal len(items) when all nodes fit within limit."""
+        make_node('x')
+        make_node('y')
+        resp = client.get('/v1/nodes', params={'limit': 100}, headers=authed_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['total'] == len(body['items'])
+
 
 class TestNodePatch:
     def test_patch_label(self, client, make_node, authed_headers):

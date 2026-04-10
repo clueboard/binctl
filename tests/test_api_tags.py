@@ -61,6 +61,14 @@ class TestTagList:
         assert body['limit'] == 2
         assert body['offset'] == 0
 
+    def test_list_total_matches_items_count(self, client, make_tag, authed_headers):
+        make_tag('alpha')
+        make_tag('beta')
+        resp = client.get('/v1/tags', params={'limit': 100}, headers=authed_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['total'] == len(body['items'])
+
 
 class TestTagPatch:
     def test_patch_rename(self, client, make_tag, authed_headers):
