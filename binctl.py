@@ -55,7 +55,11 @@ def _check_response(result, label: str):
 )
 @cli.argument('--token', default=None, help='Bearer token for authentication')
 @cli.argument('--username', default=None, help='Username for login-based authentication')
-@cli.argument('--password', default=None, help='Password for login-based authentication')
+@cli.argument(
+    '--password',
+    default=None,
+    help='Password for login-based authentication. WARNING: visible in process listings (ps, top). Prefer --token for production use.',
+)
 @cli.entrypoint('binctl: manage storage nodes and tags.')
 def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
