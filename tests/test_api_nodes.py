@@ -164,6 +164,17 @@ class TestNodePatch:
         resp = client.patch(f'/v1/nodes/{parent_id}', json={'is_container': False}, headers=authed_headers)
         assert resp.status_code == 400
 
+    def test_patch_clear_description(self, client, make_node, authed_headers):
+        """PATCH with description=null must clear the description to None."""
+        node_id = make_node('item', description='initial description')
+        resp = client.patch(
+            f'/v1/nodes/{node_id}',
+            json={'description': None},
+            headers=authed_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()['description'] is None
+
 
 def test_count_nodes_returns_int(app):
     with app.app.app_context():
