@@ -18,18 +18,34 @@ It's backed by a Flask API with a CLI frontend.
 2. Install the optional driver for your database (SQLite needs none — it's built into Python):
    - **MySQL:** `pip install 'binctl[mysql]'`
    - **PostgreSQL:** `pip install 'binctl[postgresql]'`
-3. Set `DATABASE_URL` before starting the server:
-   - SQLite: `sqlite:///binctl.db`
+3. Set `DATABASE_URL` and start the server:
+   ```
+   export DATABASE_URL=sqlite:///binctl.db
+   uvicorn web:create_app --factory
+   ```
+   Other supported URL formats:
    - MySQL: `mysql+pymysql://user:password@localhost/binctl`
    - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
+4. Create a user and token:
+   ```
+   python manage.py create-user --username alice
+   ```
+   Then pass `--token <token>` (or `--username`/`--password`) to `binctl` commands.
 
-Current CLI subcommands:
+## CLI
 
 - `binctl node list|get|create|update` - manage nodes
 - `binctl tag list|get|create|update`  - manage tags
 
 > **Note:** The API does not yet support DELETE. Nodes and tags can be created
 > and updated but not removed via the API.
+
+`manage.py` subcommands (server-side user/token management):
+
+- `python manage.py create-user` - create a user
+- `python manage.py list-users` - list users
+- `python manage.py list-tokens` - list tokens for a user
+- `python manage.py revoke-tokens` - revoke all tokens for a user
 
 ## Tests / CI
 
