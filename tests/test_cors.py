@@ -1,4 +1,3 @@
-
 import pytest
 
 
@@ -78,6 +77,7 @@ def test_default_max_age(cors_client):
 def test_cors_max_age_invalid_env_raises_helpful_error(monkeypatch):
     """CORS_MAX_AGE with a non-integer value must raise ValueError naming the env var."""
     import web
+
     monkeypatch.setenv('CORS_MAX_AGE', 'auto')
     with pytest.raises(ValueError, match='CORS_MAX_AGE'):
         web.create_app()

@@ -41,7 +41,7 @@ def create_app():
     try:
         max_age = int(_cors_max_age_raw)
     except ValueError:
-        raise ValueError(f"CORS_MAX_AGE must be an integer (got {_cors_max_age_raw!r})")
+        raise ValueError(f'CORS_MAX_AGE must be an integer (got {_cors_max_age_raw!r})')
 
     cx_app = connexion.App(__name__, specification_dir='.')
     cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=True)

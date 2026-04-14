@@ -101,5 +101,6 @@ class TestTagPatch:
 def test_count_tags_returns_int(app):
     with app.app.app_context():
         from db.flask import count_tags
+
         result = count_tags()
         assert isinstance(result, int)

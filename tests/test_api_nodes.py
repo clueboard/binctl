@@ -188,5 +188,6 @@ class TestNodePatch:
 def test_count_nodes_returns_int(app):
     with app.app.app_context():
         from db.flask import count_nodes
+
         result = count_nodes()
         assert isinstance(result, int)

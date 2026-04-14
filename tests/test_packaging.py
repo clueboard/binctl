@@ -1,4 +1,5 @@
 """Verify DB driver dependencies are optional extras, not core requirements."""
+
 import importlib.metadata
 
 
