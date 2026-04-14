@@ -234,38 +234,38 @@ def post_node_create() -> Response:
 
 def patch_node_update(node_id: int) -> Response:
     data = _parse_json_body()
-    row = fetch_node(node_id)
     fields = {}
-
-    if not row:
-        return error(404, 'Node not found')
-
-    if 'label' in data:
-        if not data['label']:
-            return error(400, 'label cannot be empty')
-        if len(data['label']) > 255:
-            return error(400, 'label must be 255 characters or fewer')
-        fields['label'] = data['label']
-
-    if 'description' in data:
-        if data['description'] == '':
-            return error(400, 'description cannot be empty')
-        fields['description'] = data['description']
-
-    if 'is_container' in data:
-        value = bool(data['is_container'])
-        if not value and node_has_children(node_id):
-            return error(400, 'cannot set is_container=false on a node that has children')
-        fields['is_container'] = value
-
-    parent_provided = 'parent_id' in data
-    parent_id = data.get('parent_id') if parent_provided else None
-
-    tag_ids_provided = 'tag_ids' in data
-    tag_ids = data.get('tag_ids') or []
 
     try:
         with transactional():
+            row = fetch_node(node_id)
+            if not row:
+                return error(404, 'Node not found')
+
+            if 'label' in data:
+                if not data['label']:
+                    return error(400, 'label cannot be empty')
+                if len(data['label']) > 255:
+                    return error(400, 'label must be 255 characters or fewer')
+                fields['label'] = data['label']
+
+            if 'description' in data:
+                if data['description'] == '':
+                    return error(400, 'description cannot be empty')
+                fields['description'] = data['description']
+
+            if 'is_container' in data:
+                value = bool(data['is_container'])
+                if not value and node_has_children(node_id):
+                    return error(400, 'cannot set is_container=false on a node that has children')
+                fields['is_container'] = value
+
+            parent_provided = 'parent_id' in data
+            parent_id = data.get('parent_id') if parent_provided else None
+
+            tag_ids_provided = 'tag_ids' in data
+            tag_ids = data.get('tag_ids') or []
+
             if parent_provided and parent_id is not None:
                 ensure_parent_is_valid(parent_id, child_id=node_id)
 
