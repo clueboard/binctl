@@ -270,7 +270,8 @@ def patch_node_update(node_id: int) -> Response:
                 ensure_parent_is_valid(parent_id, child_id=node_id)
 
             if fields:
-                update_node_fields(node_id, fields)
+                if update_node_fields(node_id, fields) == 0:
+                    return error(404, 'Node not found')
 
             if parent_provided:
                 set_parent(node_id, parent_id)

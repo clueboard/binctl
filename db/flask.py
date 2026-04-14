@@ -279,15 +279,16 @@ def create_node(label: str, description: str | None, is_container: bool) -> int:
 _UPDATABLE_NODE_FIELDS = frozenset({'label', 'description', 'is_container'})
 
 
-def update_node_fields(node_id: int, fields: dict) -> None:
+def update_node_fields(node_id: int, fields: dict) -> int:
     invalid = fields.keys() - _UPDATABLE_NODE_FIELDS
     if invalid:
         raise ValueError(f'non-updatable node fields: {invalid}')
     set_clause = ', '.join(f'{k} = :{k}' for k in fields)
-    get_db().execute(
+    result = get_db().execute(
         text(f'UPDATE nodes SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
         {**fields, 'id': node_id},
     )
+    return result.rowcount
 
 
 # --------------------------------------------------------------------
