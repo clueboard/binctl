@@ -83,14 +83,7 @@ def get_tag_detail(tag_id: int) -> Response:
 
 def post_tag_create() -> Response:
     data = _parse_json_body()
-    name = data.get('name')
-
-    if name is None:
-        return error(400, 'Missing required field: name')
-    if not name:
-        return error(400, 'Required field cannot be empty: name')
-    if len(name) > 255:
-        return error(400, 'name must be 255 characters or fewer')
+    name = data['name']
 
     try:
         with transactional():
@@ -109,14 +102,7 @@ def post_tag_create() -> Response:
 
 def patch_tag_update(tag_id: int) -> Response:
     data = _parse_json_body()
-    name = data.get('name')
-
-    if name is None:
-        return error(400, 'Missing required field: name')
-    if not name:
-        return error(400, 'Required field cannot be empty: name')
-    if len(name) > 255:
-        return error(400, 'name must be 255 characters or fewer')
+    name = data['name']
 
     try:
         with transactional():

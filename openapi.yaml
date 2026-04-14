@@ -364,12 +364,16 @@ components:
       properties:
         name:
           type: string
-
+          minLength: 1
+          maxLength: 255
     TagUpdate:
       type: object
+      required: [name]
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
 
     Tag:
       type: object
