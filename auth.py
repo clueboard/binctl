@@ -40,4 +40,6 @@ def hash_token(token: str) -> str:
 
 def mask_token(suffix: str, total_length: int = TOKEN_LENGTH) -> str:
     """Return a masked token string, e.g. '************abcd'."""
+    if len(suffix) > 4:
+        suffix = suffix[-4:]
     return '*' * (total_length - len(suffix)) + suffix

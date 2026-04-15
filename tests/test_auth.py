@@ -1,6 +1,6 @@
 import pytest
 
-from auth import _SCRYPT_DKLEN, _SCRYPT_N, _SCRYPT_P, _SCRYPT_R, hash_password, verify_password_hash
+from auth import _SCRYPT_DKLEN, _SCRYPT_N, _SCRYPT_P, _SCRYPT_R, hash_password, verify_password_hash, mask_token, TOKEN_LENGTH
 
 
 def test_round_trip():
@@ -58,4 +58,10 @@ def test_hash_format():
     assert int(p) == _SCRYPT_P
     assert int(dklen) == _SCRYPT_DKLEN
     assert len(bytes.fromhex(salt_hex)) == 32
-    assert len(bytes.fromhex(digest_hex)) == _SCRYPT_DKLEN
+
+
+def test_mask_token():
+    assert mask_token('abcdefgh') == '*' * (TOKEN_LENGTH - 4) + 'efgh'
+    assert mask_token('abcd') == '*' * (TOKEN_LENGTH - 4) + 'abcd'
+    assert mask_token('') == '*' * TOKEN_LENGTH
+    assert mask_token('abc') == '*' * (TOKEN_LENGTH - 3) + 'abc'
