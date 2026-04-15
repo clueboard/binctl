@@ -39,7 +39,7 @@ dev = [
 binctl-client = { path = "binctl-client", editable = true }
 
 [tool.ruff]
-line-length = 120
+line-length = 160
 
 [tool.ruff.format]
 quote-style = "single"

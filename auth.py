@@ -13,9 +13,7 @@ _SCRYPT_MAXMEM = 512 * 1024 * 1024  # 512 MB; 2× the 256 MB required for N=2**1
 
 def hash_password(password: str) -> str:
     salt = os.urandom(32)
-    digest = hashlib.scrypt(
-        password.encode(), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_SCRYPT_DKLEN, maxmem=_SCRYPT_MAXMEM
-    )
+    digest = hashlib.scrypt(password.encode(), salt=salt, n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_SCRYPT_DKLEN, maxmem=_SCRYPT_MAXMEM)
     return f'scrypt:{_SCRYPT_N}:{_SCRYPT_R}:{_SCRYPT_P}:{_SCRYPT_DKLEN}:{salt.hex()}:{digest.hex()}'
 
 
@@ -27,9 +25,7 @@ def verify_password_hash(password: str, stored: str) -> bool:
     n, r, p, dklen = int(n), int(r), int(p), int(dklen)
     if (n, r, p, dklen) != (_SCRYPT_N, _SCRYPT_R, _SCRYPT_P, _SCRYPT_DKLEN):
         raise ValueError(f'Unexpected scrypt parameters: n={n} r={r} p={p} dklen={dklen}')
-    digest = hashlib.scrypt(
-        password.encode(), salt=bytes.fromhex(salt_hex), n=n, r=r, p=p, dklen=dklen, maxmem=_SCRYPT_MAXMEM
-    )
+    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex), n=n, r=r, p=p, dklen=dklen, maxmem=_SCRYPT_MAXMEM)
     return hmac.compare_digest(digest.hex(), digest_hex)
 
 

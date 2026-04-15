@@ -36,6 +36,8 @@ def create_app():
     if cors_origins_raw.strip() == '*':
         raise ValueError("CORS_ORIGINS='*' is not allowed; specify explicit origins")
     allow_origins = [o.strip() for o in cors_origins_raw.split(',') if o.strip()]
+    if not allow_origins:
+        logging.warning('CORS_ORIGINS is empty. Since allow_credentials=True, all cross-origin credentialed requests will be rejected.')
 
     _cors_max_age_raw = os.environ.get('CORS_MAX_AGE', '600')
     try:

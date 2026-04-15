@@ -162,10 +162,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .mappings()
         .all()
     )
-    return [
-        {'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])}
-        for r in rows
-    ]
+    return [{'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])} for r in rows]
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
@@ -413,10 +410,7 @@ def create_user_session(user_id: int) -> str:
     with transactional():
         update_user_last_login(user_id)
         get_db().execute(
-            text(
-                'INSERT INTO tokens (id, user_id, token_hash, token_suffix)'
-                ' VALUES (:id, :user_id, :token_hash, :token_suffix)'
-            ),
+            text('INSERT INTO tokens (id, user_id, token_hash, token_suffix) VALUES (:id, :user_id, :token_hash, :token_suffix)'),
             {'id': new_id(), 'user_id': user_id, 'token_hash': hash_token(token), 'token_suffix': token[-4:]},
         )
     return token

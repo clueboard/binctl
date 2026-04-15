@@ -62,10 +62,7 @@ def create_token(user_id: int, expires_at: str | None = None) -> str:
     token = generate_token()
     with db.engine.connect() as conn:
         conn.execute(
-            text(
-                'INSERT INTO tokens (id, user_id, token_hash, token_suffix, expires_at)'
-                ' VALUES (:id, :uid, :th, :ts, :exp)'
-            ),
+            text('INSERT INTO tokens (id, user_id, token_hash, token_suffix, expires_at) VALUES (:id, :uid, :th, :ts, :exp)'),
             {'id': new_id(), 'uid': user_id, 'th': hash_token(token), 'ts': token[-4:], 'exp': expires_at},
         )
         conn.commit()
@@ -74,9 +71,7 @@ def create_token(user_id: int, expires_at: str | None = None) -> str:
 
 def fetch_all_users() -> Sequence[RowMapping]:
     with db.engine.connect() as conn:
-        return (
-            conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()
-        )
+        return conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()
 
 
 def fetch_tokens_for_username(username: str) -> list[dict] | None:
@@ -87,10 +82,7 @@ def fetch_tokens_for_username(username: str) -> list[dict] | None:
             return None
         rows = (
             conn.execute(
-                text(
-                    'SELECT id, token_suffix, created_at, last_used_at, expires_at'
-                    ' FROM tokens WHERE user_id = :uid ORDER BY id'
-                ),
+                text('SELECT id, token_suffix, created_at, last_used_at, expires_at FROM tokens WHERE user_id = :uid ORDER BY id'),
                 {'uid': user['id']},
             )
             .mappings()

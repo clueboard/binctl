@@ -61,12 +61,7 @@ def list_tokens(cli):
         cli.log.info(f"No tokens for '{cli.args.username}'.")
         return
     for row in rows:
-        cli.log.info(
-            f'[{row["id"]}] {row["token"]}'
-            f'  created={row["created_at"]}'
-            f'  last_used={row["last_used_at"]}'
-            f'  expires={row["expires_at"]}'
-        )
+        cli.log.info(f'[{row["id"]}] {row["token"]}  created={row["created_at"]}  last_used={row["last_used_at"]}  expires={row["expires_at"]}')
 
 
 @cli.argument('username', help='Username to revoke tokens for')

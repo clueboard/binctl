@@ -13,8 +13,7 @@ EPOCH_US: int = 1_583_884_800_000_000
 
 if time.time() >= _WARN_AFTER_UNIX_TS:
     warnings.warn(
-        'new_id() will overflow signed 64-bit integers on 2091-07-19. '
-        'Update EPOCH_US in db/id_gen.py before that date.',
+        'new_id() will overflow signed 64-bit integers on 2091-07-19. Update EPOCH_US in db/id_gen.py before that date.',
         UserWarning,
         stacklevel=2,
     )
