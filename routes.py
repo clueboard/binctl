@@ -168,7 +168,7 @@ def post_node_create() -> Response:
         return error(400, 'label must be 255 characters or fewer')
 
     description = data.get('description')
-    if description is not None and description == '':
+    if description == '':
         return error(400, 'description cannot be empty')
     is_container = bool(data.get('is_container', False))
     parent_id = data.get('parent_id')
