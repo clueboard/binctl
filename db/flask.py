@@ -288,6 +288,38 @@ def update_node_fields(node_id: int, fields: dict) -> int:
     return result.rowcount
 
 
+def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
+    """Deletes a node and its associated edges and tag associations."""
+    with transactional() as conn:
+        if not fetch_node(node_id):
+            return None
+
+        edge_count = 0
+        object_count = 0
+
+        result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
+        object_count += result.rowcount
+        edge_count += result.rowcount
+        logging.debug('Deleted %d edges where %s is the parent.', result.rowcount, node_id)
+
+        result = conn.execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': node_id})
+        object_count += result.rowcount
+        edge_count += result.rowcount
+        logging.debug('Deleted %d edges where %s is the child.', result.rowcount, node_id)
+
+        # Delete tag associations
+        result = conn.execute(text('DELETE FROM tag_node WHERE node_id = :node_id'), {'node_id': node_id})
+        object_count += result.rowcount
+        tag_count = result.rowcount
+        logging.debug('Deleted %d tags associated with %s.', result.rowcount, node_id)
+
+        # Delete the node itself
+        result = conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': node_id})
+        object_count += result.rowcount
+
+        return object_count, edge_count, tag_count, result.rowcount
+
+
 # --------------------------------------------------------------------
 # Tag helpers
 # --------------------------------------------------------------------

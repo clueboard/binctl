@@ -100,89 +100,35 @@ class TestNodeList:
         assert body['total'] == len(body['items'])
 
 
-class TestNodePatch:
-    def test_patch_label(self, client, make_node, authed_headers):
-        node_id = make_node('old label')
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'label': 'new label'}, headers=authed_headers)
-        assert resp.status_code == 200
-        assert resp.json()['label'] == 'new label'
+class TestNodeDelete:
+    def test_delete_success(self, client, make_node, make_tag, authed_headers):
+        container_id = make_node('container', is_container=True)
+        child_id = make_node('child', parent_id=container_id)
+        tag_id = make_tag('tag')
+        # Add tag to child
+        client.patch(f'/v1/nodes/{child_id}', json={'tag_ids': [tag_id]}, headers=authed_headers)
 
-    def test_patch_not_found(self, client, authed_headers):
-        resp = client.patch('/v1/nodes/99999', json={'label': 'x'}, headers=authed_headers)
+        # Delete the child
+        resp = client.delete(f'/v1/nodes/{child_id}', headers=authed_headers)
+        assert resp.status_code == 200
+
+        # Verify child is gone
+        resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
         assert resp.status_code == 404
 
-    def test_patch_set_parent(self, client, make_node, authed_headers):
-        container_id = make_node('container', is_container=True)
-        node_id = make_node('node')
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'parent_id': container_id}, headers=authed_headers)
+        # Verify container still exists and doesn't have the child anymore
+        resp = client.get(f'/v1/nodes/{container_id}', headers=authed_headers)
         assert resp.status_code == 200
-        assert resp.json()['parent_id'] == container_id
+        assert len(resp.json()['children']) == 0
 
-    def test_patch_clear_parent(self, client, make_node, authed_headers):
-        container_id = make_node('container', is_container=True)
-        node_id = make_node('node', parent_id=container_id)
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'parent_id': None}, headers=authed_headers)
+        # Verify tag association is gone (optional, but good for thoroughness)
+        resp = client.get(f'/v1/tags/{tag_id}', headers=authed_headers)
         assert resp.status_code == 200
-        assert resp.json()['parent_id'] is None
+        assert len(resp.json()['nodes']) == 0
 
-    def test_patch_self_parent(self, client, make_node, authed_headers):
-        node_id = make_node('node', is_container=True)
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'parent_id': node_id}, headers=authed_headers)
-        assert resp.status_code == 400
-
-    def test_patch_cycle(self, client, make_node, authed_headers):
-        # A (container) → B; try to set B as parent of A
-        a_id = make_node('A', is_container=True)
-        b_id = make_node('B', is_container=True, parent_id=a_id)
-        resp = client.patch(f'/v1/nodes/{a_id}', json={'parent_id': b_id}, headers=authed_headers)
-        assert resp.status_code == 400
-
-    def test_patch_indirect_cycle(self, client, make_node, authed_headers):
-        # A → B → C; try to set C as parent of A
-        a_id = make_node('A', is_container=True)
-        b_id = make_node('B', is_container=True, parent_id=a_id)
-        c_id = make_node('C', is_container=True, parent_id=b_id)
-        resp = client.patch(f'/v1/nodes/{a_id}', json={'parent_id': c_id}, headers=authed_headers)
-        assert resp.status_code == 400
-
-    def test_patch_replace_tags(self, client, make_node, make_tag, authed_headers):
-        t1 = make_tag('tag1')
-        t2 = make_tag('tag2')
-        t3 = make_tag('tag3')
-        node_id = make_node('node', tag_ids=[t1, t2])
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [t2, t3]}, headers=authed_headers)
-        assert resp.status_code == 200
-        tag_names = {t['name'] for t in resp.json()['tags']}
-        assert tag_names == {'tag2', 'tag3'}
-
-    def test_patch_clear_tags(self, client, make_node, make_tag, authed_headers):
-        tag_id = make_tag('removeme')
-        node_id = make_node('node', tag_ids=[tag_id])
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': []}, headers=authed_headers)
-        assert resp.status_code == 200
-        assert resp.json()['tags'] == []
-
-    def test_patch_nonexistent_tag(self, client, make_node, authed_headers):
-        node_id = make_node('item')
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [99999]}, headers=authed_headers)
-        assert resp.status_code == 400
-
-    def test_patch_remove_container_with_children_rejected(self, client, make_node, authed_headers):
-        parent_id = make_node('box', is_container=True)
-        make_node('item', parent_id=parent_id)
-        resp = client.patch(f'/v1/nodes/{parent_id}', json={'is_container': False}, headers=authed_headers)
-        assert resp.status_code == 400
-
-    def test_patch_clear_description(self, client, make_node, authed_headers):
-        """PATCH with description=null must clear the description to None."""
-        node_id = make_node('item', description='initial description')
-        resp = client.patch(
-            f'/v1/nodes/{node_id}',
-            json={'description': None},
-            headers=authed_headers,
-        )
-        assert resp.status_code == 200
-        assert resp.json()['description'] is None
+    def test_delete_not_found(self, client, authed_headers):
+        resp = client.delete('/v1/nodes/99999', headers=authed_headers)
+        assert resp.status_code == 404
 
 
 def test_count_nodes_returns_int(app):

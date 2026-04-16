@@ -97,6 +97,47 @@ paths:
                 $ref: "#/components/schemas/Node"
         "404":
           description: Node not found
+    delete:
+      x-openapi-router-controller: routes
+      operationId: delete_node_endpoint
+      tags: [nodes]
+      summary: Delete a node
+      parameters:
+        - in: path
+          name: node_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Node deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: 
+                  - deleted
+                properties:
+                  deleted:
+                    type: object
+                    required:
+                      - total
+                      - edges
+                      - tags
+                      - nodes
+                    properties:
+                      total:
+                        type: integer
+                      edges:
+                        type: integer
+                      tags:
+                        type: integer
+                      nodes:
+                        type: integer
+        "404":
+          description: Node not found
+
 
   /v1/tags:
     get:

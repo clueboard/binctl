@@ -9,6 +9,7 @@ from db.flask import (
     count_tags,
     create_node,
     create_tag,
+    delete_node,
     ensure_parent_is_valid,
     fetch_children,
     fetch_node,
@@ -291,3 +292,28 @@ def patch_node_update(node_id: int) -> Response:
     node['tags'] = tags
 
     return jsonify(node)
+
+
+def delete_node_endpoint(node_id: int) -> Response:
+    try:
+        delete_op = delete_node(node_id)
+
+        if delete_op is None:
+            return error(404, 'Node not found')
+
+        object_count, edge_count, tag_count, node_count = delete_op
+
+    except SQLAlchemyError:
+        logger.exception('Database error in delete_node_endpoint for node %d', node_id)
+        return error(500, 'Internal server error')
+
+    return jsonify(
+        {
+            'deleted': {
+                'total': object_count,
+                'edges': edge_count,
+                'tags': tag_count,
+                'nodes': node_count,
+            },
+        }
+    )
