@@ -275,25 +275,25 @@ def create_node(
     parent_id: int | None = None,
     tag_ids: list[int] | None = None,
 ) -> int:
-    try:
-        with transactional():
-            node_id = new_id()
-            get_db().execute(
-                text(
-                    """
-                    INSERT INTO nodes (id, label, description, is_container)
-                    VALUES (:id, :label, :description, :is_container)
-                    """
-                ),
-                {'id': node_id, 'label': label, 'description': description, 'is_container': is_container},
-            )
-            if parent_id is not None:
-                ensure_parent_is_valid(parent_id)
-                set_parent(node_id, parent_id)
-            if tag_ids:
+    with transactional():
+        node_id = new_id()
+        get_db().execute(
+            text(
+                """
+                INSERT INTO nodes (id, label, description, is_container)
+                VALUES (:id, :label, :description, :is_container)
+                """
+            ),
+            {'id': node_id, 'label': label, 'description': description, 'is_container': is_container},
+        )
+        if parent_id is not None:
+            ensure_parent_is_valid(parent_id)
+            set_parent(node_id, parent_id)
+        if tag_ids:
+            try:
                 replace_node_tags(node_id, tag_ids)
-    except IntegrityError:
-        raise ValueError('One or more tag_ids do not exist')
+            except IntegrityError:
+                raise ValueError('One or more tag_ids do not exist')
     return node_id
 
 
@@ -322,23 +322,23 @@ def update_node(
     tag_ids: list[int] | None = None,
 ) -> bool:
     """Update a node's fields, parent, and/or tags atomically. Returns False if node not found."""
-    try:
-        with transactional():
-            if not fetch_node(node_id):
+    with transactional():
+        if not fetch_node(node_id):
+            return False
+        if 'is_container' in fields and not fields['is_container'] and node_has_children(node_id):
+            raise ValueError('cannot set is_container=false on a node that has children')
+        if parent_provided and parent_id is not None:
+            ensure_parent_is_valid(parent_id, child_id=node_id)
+        if fields:
+            if update_node_fields(node_id, fields) == 0:
                 return False
-            if 'is_container' in fields and not fields['is_container'] and node_has_children(node_id):
-                raise ValueError('cannot set is_container=false on a node that has children')
-            if parent_provided and parent_id is not None:
-                ensure_parent_is_valid(parent_id, child_id=node_id)
-            if fields:
-                if update_node_fields(node_id, fields) == 0:
-                    return False
-            if parent_provided:
-                set_parent(node_id, parent_id)
-            if tag_ids_provided:
+        if parent_provided:
+            set_parent(node_id, parent_id)
+        if tag_ids_provided:
+            try:
                 replace_node_tags(node_id, tag_ids or [])
-    except IntegrityError:
-        raise ValueError('One or more tag_ids do not exist')
+            except IntegrityError:
+                raise ValueError('One or more tag_ids do not exist')
     return True
 
 
