@@ -1,31 +1,23 @@
 import logging
 
 from flask import Response, jsonify, request
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.exceptions import BadRequest
 
 from db.flask import (
-    count_nodes,
-    count_tags,
     create_node,
     create_tag,
     delete_node,
-    ensure_parent_is_valid,
     fetch_children,
     fetch_node,
     fetch_nodes_for_tag,
-    fetch_nodes_page,
+    fetch_nodes_list,
     fetch_parent_id,
     fetch_tag,
     fetch_tags_for_node,
-    fetch_tags_page,
-    node_has_children,
+    fetch_tags_list,
     node_row_to_dict,
-    replace_node_tags,
-    set_parent,
     tag_row_to_dict,
-    transactional,
-    update_node_fields,
+    update_node,
     update_tag,
 )
 from web import error
@@ -53,9 +45,7 @@ def get_tags_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    with transactional():
-        total = count_tags()
-        rows = fetch_tags_page(limit, offset)
+    total, rows = fetch_tags_list(limit, offset)
 
     return jsonify(
         {
@@ -87,12 +77,11 @@ def post_tag_create() -> Response:
     name = data['name']
 
     try:
-        with transactional():
-            tag_id = create_tag(name)
-            tag = fetch_tag(tag_id)
-    except IntegrityError:
-        return error(409, f"Tag with name '{name}' already exists")
+        tag_id = create_tag(name)
+    except ValueError as e:
+        return error(409, str(e))
 
+    tag = fetch_tag(tag_id)
     if tag is None:
         logger.error('fetch_tag returned None after create_tag succeeded for name=%r', name)
         return error(500, 'Internal server error')
@@ -106,14 +95,13 @@ def patch_tag_update(tag_id: int) -> Response:
     name = data['name']
 
     try:
-        with transactional():
-            rowcount = update_tag(tag_id, name)
-            if rowcount == 0:
-                return error(404, 'Tag not found')
-            tag = fetch_tag(tag_id)
-    except IntegrityError:
-        return error(409, f"Tag with name '{name}' already exists")
+        rowcount = update_tag(tag_id, name)
+    except ValueError as e:
+        return error(409, str(e))
 
+    if rowcount == 0:
+        return error(404, 'Tag not found')
+    tag = fetch_tag(tag_id)
     if tag is None:
         logger.error('fetch_tag returned None after update_tag succeeded for tag_id=%d', tag_id)
         return error(500, 'Internal server error')
@@ -132,9 +120,7 @@ def get_nodes_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    with transactional():
-        total = count_nodes()
-        rows = fetch_nodes_page(limit, offset)
+    total, rows = fetch_nodes_list(limit, offset)
 
     return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': [node_row_to_dict(r) for r in rows]})
 
@@ -176,28 +162,10 @@ def post_node_create() -> Response:
     tag_ids = data.get('tag_ids') or []
 
     try:
-        with transactional():
-            if parent_id is not None:
-                ensure_parent_is_valid(parent_id)
-
-            node_id = create_node(label, description, is_container)
-
-            if parent_id is not None:
-                set_parent(node_id, parent_id)
-
-            if tag_ids:
-                replace_node_tags(node_id, tag_ids)
-
+        node_id = create_node(label, description, is_container, parent_id=parent_id, tag_ids=tag_ids)
     except ValueError as ve:
         logger.error(f'Validation error in post_node_create: {ve}')
         return error(400, str(ve))
-
-    except IntegrityError:
-        return error(400, 'One or more tag_ids do not exist')
-
-    except SQLAlchemyError:
-        logger.exception('Database error in post_node_create')
-        return error(500, 'Internal server error')
 
     # Fetch full node representation
     row = fetch_node(node_id)
@@ -223,59 +191,42 @@ def patch_node_update(node_id: int) -> Response:
     data = _parse_json_body()
     fields = {}
 
+    if 'label' in data:
+        if not data['label']:
+            return error(400, 'label cannot be empty')
+        if len(data['label']) > 255:
+            return error(400, 'label must be 255 characters or fewer')
+        fields['label'] = data['label']
+
+    if 'description' in data:
+        if data['description'] == '':
+            return error(400, 'description cannot be empty')
+        fields['description'] = data['description']
+
+    if 'is_container' in data:
+        fields['is_container'] = bool(data['is_container'])
+
+    parent_provided = 'parent_id' in data
+    parent_id = data.get('parent_id') if parent_provided else None
+
+    tag_ids_provided = 'tag_ids' in data
+    tag_ids = data.get('tag_ids') or []
+
     try:
-        with transactional():
-            row = fetch_node(node_id)
-            if not row:
-                return error(404, 'Node not found')
-
-            if 'label' in data:
-                if not data['label']:
-                    return error(400, 'label cannot be empty')
-                if len(data['label']) > 255:
-                    return error(400, 'label must be 255 characters or fewer')
-                fields['label'] = data['label']
-
-            if 'description' in data:
-                if data['description'] == '':
-                    return error(400, 'description cannot be empty')
-                fields['description'] = data['description']
-
-            if 'is_container' in data:
-                value = bool(data['is_container'])
-                if not value and node_has_children(node_id):
-                    return error(400, 'cannot set is_container=false on a node that has children')
-                fields['is_container'] = value
-
-            parent_provided = 'parent_id' in data
-            parent_id = data.get('parent_id') if parent_provided else None
-
-            tag_ids_provided = 'tag_ids' in data
-            tag_ids = data.get('tag_ids') or []
-
-            if parent_provided and parent_id is not None:
-                ensure_parent_is_valid(parent_id, child_id=node_id)
-
-            if fields:
-                if update_node_fields(node_id, fields) == 0:
-                    return error(404, 'Node not found')
-
-            if parent_provided:
-                set_parent(node_id, parent_id)
-
-            if tag_ids_provided:
-                replace_node_tags(node_id, tag_ids)
-
+        found = update_node(
+            node_id,
+            fields,
+            parent_provided=parent_provided,
+            parent_id=parent_id,
+            tag_ids_provided=tag_ids_provided,
+            tag_ids=tag_ids,
+        )
     except ValueError as ve:
         logger.error(f'Validation error in patch_node_update for node {node_id}: {ve}')
         return error(400, str(ve))
 
-    except IntegrityError:
-        return error(400, 'One or more tag_ids do not exist')
-
-    except SQLAlchemyError as e:
-        logger.exception(f'Database error in patch_node_update for node {node_id}: {e}')
-        return error(500, 'Internal server error')
+    if not found:
+        return error(404, 'Node not found')
 
     # Return updated representation
     row = fetch_node(node_id)
@@ -295,17 +246,12 @@ def patch_node_update(node_id: int) -> Response:
 
 
 def delete_node_endpoint(node_id: int) -> Response:
-    try:
-        delete_op = delete_node(node_id)
+    delete_op = delete_node(node_id)
 
-        if delete_op is None:
-            return error(404, 'Node not found')
+    if delete_op is None:
+        return error(404, 'Node not found')
 
-        object_count, edge_count, tag_count, node_count = delete_op
-
-    except SQLAlchemyError:
-        logger.exception('Database error in delete_node_endpoint for node %d', node_id)
-        return error(500, 'Internal server error')
+    object_count, edge_count, tag_count, node_count = delete_op
 
     return jsonify(
         {
