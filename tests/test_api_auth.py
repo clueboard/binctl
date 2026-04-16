@@ -1,3 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import text
+
 from db.direct import create_token, create_user
 
 
@@ -26,6 +30,24 @@ class TestLogin:
         token = login_resp.json()['token']
         resp = client.get('/v1/nodes', headers={'Authorization': f'Bearer {token}'})
         assert resp.status_code == 200
+
+    def test_login_token_has_expiry(self, app, client, clean_db, engine):
+        before = datetime.now(timezone.utc)
+        create_user('dave', 'pass')
+        resp = client.post('/v1/auth/login', json={'username': 'dave', 'password': 'pass'})
+        assert resp.status_code == 200
+        with engine.connect() as conn:
+            row = conn.execute(text('SELECT expires_at FROM tokens')).mappings().first()
+        assert row is not None
+        expires_at = row['expires_at']
+        assert expires_at is not None
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        lifetime_days = app.app.config['SESSION_LIFETIME_DAYS']
+        expected = before + timedelta(days=lifetime_days)
+        assert abs((expires_at - expected).total_seconds()) < 5
 
 
 class TestExpiry:

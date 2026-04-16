@@ -45,7 +45,16 @@ def create_app():
     except ValueError:
         raise ValueError(f'CORS_MAX_AGE must be an integer (got {_cors_max_age_raw!r})')
 
+    _session_lifetime_raw = os.environ.get('SESSION_LIFETIME_DAYS', '30')
+    try:
+        session_lifetime_days = int(_session_lifetime_raw)
+        if session_lifetime_days <= 0:
+            raise ValueError
+    except ValueError:
+        raise ValueError(f'SESSION_LIFETIME_DAYS must be a positive integer (got {_session_lifetime_raw!r})')
+
     cx_app = connexion.App(__name__, specification_dir='.')
+    cx_app.app.config['SESSION_LIFETIME_DAYS'] = session_lifetime_days
     cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=True)
     cx_app.add_middleware(
         CORSMiddleware,

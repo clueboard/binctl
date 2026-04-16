@@ -56,7 +56,7 @@ It's backed by a Flask API with a CLI frontend.
 - **SSL/TLS termination** — the Flask/uvicorn server does not handle TLS on its own.
 - **Rate limiting on `POST /v1/auth/login`** — scrypt makes each login attempt slow, but a determined attacker can still brute-force credentials over time without a request rate limit.
 
-**Token security** — tokens created via `python manage.py create-user` do not expire by default. Expiring tokens exist primarily for web browser sessions. CLI tokens should be treated with the same secrecy as a password: store them safely, do not share them, and revoke compromised tokens promptly with `python manage.py revoke-tokens`.
+**Token security** — tokens created via the login API (web/browser sessions) expire after 30 days by default; set `SESSION_LIFETIME_DAYS` to override. Tokens created via `python manage.py create-user` do not expire by default. All tokens should be treated with the same secrecy as a password: store them safely, do not share them, and revoke compromised tokens promptly with `python manage.py revoke-tokens`.
 
 **Password policy** — the application does not enforce any minimum password strength. Choose a strong password of at least 16 characters using a mix of uppercase letters, lowercase letters, digits, and symbols.
 

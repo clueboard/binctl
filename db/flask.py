@@ -1,9 +1,9 @@
 import logging
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
-from flask import g
+from flask import current_app, g
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
@@ -496,11 +496,13 @@ def update_user_last_login(user_id: int) -> None:
 def create_user_session(user_id: int) -> str:
     """Update last_login_at, insert a new token, and return the raw token (only exposure)."""
     token = generate_token()
+    lifetime_days = current_app.config['SESSION_LIFETIME_DAYS']
+    expires_at = datetime.now(timezone.utc) + timedelta(days=lifetime_days)
     with transactional():
         update_user_last_login(user_id)
         get_db().execute(
-            text('INSERT INTO tokens (id, user_id, token_hash, token_suffix) VALUES (:id, :user_id, :token_hash, :token_suffix)'),
-            {'id': new_id(), 'user_id': user_id, 'token_hash': hash_token(token), 'token_suffix': token[-4:]},
+            text('INSERT INTO tokens (id, user_id, token_hash, token_suffix, expires_at) VALUES (:id, :user_id, :token_hash, :token_suffix, :expires_at)'),
+            {'id': new_id(), 'user_id': user_id, 'token_hash': hash_token(token), 'token_suffix': token[-4:], 'expires_at': expires_at},
         )
     return token
 
