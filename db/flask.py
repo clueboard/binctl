@@ -402,13 +402,6 @@ def fetch_tags_list(limit: int, offset: int) -> tuple[int, Sequence[RowMapping]]
     return total, rows
 
 
-def fetch_tags_list(limit: int, offset: int) -> tuple[int, Sequence[RowMapping]]:
-    with transactional():
-        total = count_tags()
-        rows = fetch_tags_page(limit, offset)
-    return total, rows
-
-
 def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
     return (
         get_db()
