@@ -3,6 +3,7 @@
 import sys
 import types
 import unittest
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
 
@@ -33,12 +34,20 @@ def _make_cli(args):
     return cli
 
 
+def _mock_response(parsed=None):
+    """Build a mock Response with a successful status and the given parsed value."""
+    response = MagicMock()
+    response.status_code = HTTPStatus.OK
+    response.parsed = parsed if parsed is not None else MagicMock(**{'to_dict.return_value': {}})
+    return response
+
+
 class TestNodeCreate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
-        """post_node_create.sync must be called with body=, not json_body=."""
-        with patch('binctl_client.api.nodes.post_node_create.sync') as mock_sync:
+        """post_node_create.sync_detailed must be called with body=, not json_body=."""
+        with patch('binctl_client.api.nodes.post_node_create.sync_detailed') as mock_sync:
             with patch('binctl.Client'):
-                mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+                mock_sync.return_value = _mock_response()
                 # Import here so patches are in place
                 import binctl as bc
 
@@ -52,9 +61,9 @@ class TestNodeCreate(unittest.TestCase):
 
 class TestNodeUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
-        with patch('binctl_client.api.nodes.patch_node_update.sync') as mock_sync:
+        with patch('binctl_client.api.nodes.patch_node_update.sync_detailed') as mock_sync:
             with patch('binctl.Client'):
-                mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+                mock_sync.return_value = _mock_response()
                 import binctl as bc
 
                 cli = _make_cli(_make_cli_args(label='updated', node_id=1))
@@ -67,9 +76,9 @@ class TestNodeUpdate(unittest.TestCase):
 
 class TestTagCreate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
-        with patch('binctl_client.api.tags.post_tag_create.sync') as mock_sync:
+        with patch('binctl_client.api.tags.post_tag_create.sync_detailed') as mock_sync:
             with patch('binctl.Client'):
-                mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+                mock_sync.return_value = _mock_response()
                 import binctl as bc
 
                 cli = _make_cli(_make_cli_args(name='mytag'))
@@ -82,8 +91,8 @@ class TestTagCreate(unittest.TestCase):
 
 class TestTagUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
-        with patch('binctl_client.api.tags.patch_tag_update.sync') as mock_sync:
-            mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+        with patch('binctl_client.api.tags.patch_tag_update.sync_detailed') as mock_sync:
+            mock_sync.return_value = _mock_response()
             import binctl as bc
 
             cli = _make_cli(_make_cli_args(name='renamed'))
@@ -97,8 +106,8 @@ class TestTagUpdate(unittest.TestCase):
 class TestNodeDetach(unittest.TestCase):
     def test_no_parent_sends_null_parent_id(self):
         """--no-parent must include parent_id=None in the body, not omit it."""
-        with patch('binctl_client.api.nodes.patch_node_update.sync') as mock_sync:
-            mock_sync.return_value = MagicMock(**{'to_dict.return_value': {}})
+        with patch('binctl_client.api.nodes.patch_node_update.sync_detailed') as mock_sync:
+            mock_sync.return_value = _mock_response()
             import binctl as bc
 
             cli = _make_cli(_make_cli_args(node_id=1, no_parent=True))

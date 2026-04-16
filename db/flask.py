@@ -13,6 +13,8 @@ import db
 from auth import generate_token, hash_password, hash_token, verify_password_hash
 from db.id_gen import new_id
 
+logger = logging.getLogger(__name__)
+
 # Pre-computed scrypt hash used when the username is not found, so verify_password
 # always does full key-stretching regardless of whether the username exists.
 # Prevents timing attacks that distinguish "unknown user" from "wrong password".
@@ -241,13 +243,6 @@ def count_nodes() -> int:
     return get_db().execute(text('SELECT COUNT(*) FROM nodes')).scalar() or 0
 
 
-def fetch_nodes_list(limit: int, offset: int) -> tuple[int, Sequence[RowMapping]]:
-    with transactional():
-        total = count_nodes()
-        rows = fetch_nodes_page(limit, offset)
-    return total, rows
-
-
 def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
     return (
         get_db()
@@ -354,18 +349,18 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
         result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
         object_count += result.rowcount
         edge_count += result.rowcount
-        logging.debug('Deleted %d edges where %s is the parent.', result.rowcount, node_id)
+        logger.debug('Deleted %d edges where %s is the parent.', result.rowcount, node_id)
 
         result = conn.execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': node_id})
         object_count += result.rowcount
         edge_count += result.rowcount
-        logging.debug('Deleted %d edges where %s is the child.', result.rowcount, node_id)
+        logger.debug('Deleted %d edges where %s is the child.', result.rowcount, node_id)
 
         # Delete tag associations
         result = conn.execute(text('DELETE FROM tag_node WHERE node_id = :node_id'), {'node_id': node_id})
         object_count += result.rowcount
         tag_count = result.rowcount
-        logging.debug('Deleted %d tags associated with %s.', result.rowcount, node_id)
+        logger.debug('Deleted %d tags associated with %s.', result.rowcount, node_id)
 
         # Delete the node itself
         result = conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': node_id})
@@ -393,13 +388,6 @@ def fetch_tag(tag_id: int) -> RowMapping | None:
 
 def count_tags() -> int:
     return get_db().execute(text('SELECT COUNT(*) FROM tags')).scalar() or 0
-
-
-def fetch_tags_list(limit: int, offset: int) -> tuple[int, Sequence[RowMapping]]:
-    with transactional():
-        total = count_tags()
-        rows = fetch_tags_page(limit, offset)
-    return total, rows
 
 
 def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
@@ -492,7 +480,7 @@ def verify_password(username: str, password: str) -> RowMapping | None:
         valid = verify_password_hash(password, stored_hash)
     except Exception as e:
         valid = False
-        logging.error("Error trying to verify %s's password: %s: %s", username, e.__class__.__name__, e)
+        logger.error("Error trying to verify %s's password: %s: %s", username, e.__class__.__name__, e)
     if not valid or row is None:
         return None
     return row

@@ -4,17 +4,19 @@ from flask import Response, jsonify, request
 from werkzeug.exceptions import BadRequest
 
 from db.flask import (
+    count_nodes,
+    count_tags,
     create_node,
     create_tag,
     delete_node,
     fetch_children,
     fetch_node,
     fetch_nodes_for_tag,
-    fetch_nodes_list,
+    fetch_nodes_page,
     fetch_parent_id,
     fetch_tag,
     fetch_tags_for_node,
-    fetch_tags_list,
+    fetch_tags_page,
     node_row_to_dict,
     tag_row_to_dict,
     update_node,
@@ -45,7 +47,8 @@ def get_tags_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total, rows = fetch_tags_list(limit, offset)
+    total = count_tags()
+    rows = fetch_tags_page(limit, offset)
 
     return jsonify(
         {
@@ -120,7 +123,8 @@ def get_nodes_list() -> Response:
     if offset < 0:
         return error(400, 'offset must be non-negative')
 
-    total, rows = fetch_nodes_list(limit, offset)
+    total = count_nodes()
+    rows = fetch_nodes_page(limit, offset)
 
     return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': [node_row_to_dict(r) for r in rows]})
 

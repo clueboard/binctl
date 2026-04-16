@@ -99,6 +99,17 @@ class TestCreateUser:
         error_msg = mock_cli.log.error.call_args[0][0]
         assert 'match' in error_msg
 
+    def test_short_password_warns(self):
+        mock_cli = _mock_cli()
+        with (
+            patch('builtins.input', return_value='alice'),
+            patch('getpass.getpass', return_value='abc'),
+            patch.object(manage._db, 'create_user', return_value=42),
+        ):
+            manage.create_user(mock_cli)
+        mock_cli.log.warning.assert_called_once()
+        assert 'short' in mock_cli.log.warning.call_args[0][0]
+
     def test_db_error(self):
         mock_cli = _mock_cli()
         with (

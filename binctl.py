@@ -20,6 +20,7 @@ from binctl_client.api.tags import (
     post_tag_create,
 )
 from binctl_client.models import NodeCreate, NodeUpdate, TagCreate, TagUpdate
+from binctl_client.types import Response
 from milc import cli
 
 
@@ -36,10 +37,15 @@ def _echo_json(cli, data):
     cli.echo(json.dumps(data, indent=4, sort_keys=True))
 
 
-def _check_response(result, label: str):
-    """Exit with an error if the API returned None (server returned an error status)."""
-    if result is None:
-        cli.log.error('%s: server returned an error (resource not found or unexpected status)', label)
+def _check_response(response: Response, label: str):
+    """Exit with an error if the API returned a non-success status."""
+    if response.parsed is None:
+        try:
+            body = json.loads(response.content)
+            message = body.get('error') or response.content.decode()
+        except Exception:
+            message = response.content.decode() or 'unknown error'
+        cli.log.error('%s: %s %s', label, response.status_code.value, message)
         raise SystemExit(1)
 
 
@@ -78,11 +84,11 @@ def _node_list(cli):
     offset = 0
     limit = 100
     while True:
-        page = get_nodes_list.sync(client=client, limit=limit, offset=offset)
-        _check_response(page, 'node list')
-        assert page is not None  # _check_response raises SystemExit on None; assert narrows the type for ty
-        items.extend(page.items)
-        if len(items) >= page.total:
+        response = get_nodes_list.sync_detailed(client=client, limit=limit, offset=offset)
+        _check_response(response, 'node list')
+        assert response.parsed is not None  # _check_response raises SystemExit on None; assert narrows the type for ty
+        items.extend(response.parsed.items)
+        if len(items) >= response.parsed.total:
             break
         offset += limit
     _echo_json(cli, [n.to_dict() for n in items])
@@ -90,9 +96,9 @@ def _node_list(cli):
 
 def _node_get(cli, node_id: int):
     client = _get_client(cli)
-    node = get_node_detail.sync(client=client, node_id=node_id)
-    _check_response(node, f'node {node_id}')
-    data = node.to_dict() if hasattr(node, 'to_dict') else node
+    response = get_node_detail.sync_detailed(client=client, node_id=node_id)
+    _check_response(response, f'node {node_id}')
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
     _echo_json(cli, data)
 
 
@@ -107,9 +113,9 @@ def _node_create(cli):
         tag_ids=cli.args.tag_id or [],
     )
 
-    node = post_node_create.sync(client=client, body=body)
-    _check_response(node, 'node create')
-    data = node.to_dict() if hasattr(node, 'to_dict') else node
+    response = post_node_create.sync_detailed(client=client, body=body)
+    _check_response(response, 'node create')
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
     _echo_json(cli, data)
 
 
@@ -134,9 +140,9 @@ def _node_update(cli, node_id: int):
 
     body = NodeUpdate(**body_kwargs)
 
-    node = patch_node_update.sync(client=client, node_id=node_id, body=body)
-    _check_response(node, f'node {node_id}')
-    data = node.to_dict() if hasattr(node, 'to_dict') else node
+    response = patch_node_update.sync_detailed(client=client, node_id=node_id, body=body)
+    _check_response(response, f'node {node_id}')
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
     _echo_json(cli, data)
 
 
@@ -151,11 +157,11 @@ def _tag_list(cli):
     offset = 0
     limit = 100
     while True:
-        page = get_tags_list.sync(client=client, limit=limit, offset=offset)
-        _check_response(page, 'tag list')
-        assert page is not None  # _check_response raises SystemExit on None; assert narrows the type for ty
-        items.extend(page.items)
-        if len(items) >= page.total:
+        response = get_tags_list.sync_detailed(client=client, limit=limit, offset=offset)
+        _check_response(response, 'tag list')
+        assert response.parsed is not None  # _check_response raises SystemExit on None; assert narrows the type for ty
+        items.extend(response.parsed.items)
+        if len(items) >= response.parsed.total:
             break
         offset += limit
     _echo_json(cli, [t.to_dict() for t in items])
@@ -163,27 +169,27 @@ def _tag_list(cli):
 
 def _tag_get(cli, tag_id: int):
     client = _get_client(cli)
-    tag = get_tag_detail.sync(client=client, tag_id=tag_id)
-    _check_response(tag, f'tag {tag_id}')
-    data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
+    response = get_tag_detail.sync_detailed(client=client, tag_id=tag_id)
+    _check_response(response, f'tag {tag_id}')
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
     _echo_json(cli, data)
 
 
 def _tag_create(cli):
     client = _get_client(cli)
     body = TagCreate(name=cli.args.name)
-    tag = post_tag_create.sync(client=client, body=body)
-    _check_response(tag, 'tag create')
-    data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
+    response = post_tag_create.sync_detailed(client=client, body=body)
+    _check_response(response, 'tag create')
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
     _echo_json(cli, data)
 
 
 def _tag_update(cli, tag_id: int):
     client = _get_client(cli)
     body = TagUpdate(name=cli.args.name)
-    tag = patch_tag_update.sync(client=client, tag_id=tag_id, body=body)
-    _check_response(tag, f'tag {tag_id}')
-    data = tag.to_dict() if hasattr(tag, 'to_dict') else tag
+    response = patch_tag_update.sync_detailed(client=client, tag_id=tag_id, body=body)
+    _check_response(response, f'tag {tag_id}')
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
     _echo_json(cli, data)
 
 

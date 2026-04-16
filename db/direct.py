@@ -9,11 +9,14 @@ from db.id_gen import new_id
 
 
 def fetch_token_and_touch(token: str) -> dict | None:
-    """Fetch token+user row and update last_used_at atomically.
+    """Fetch token+user row and update last_used_at.
+
+    The SELECT and UPDATE are separate statements; last_used_at is a
+    best-effort audit field and a missed update on crash is harmless.
 
     Opens its own connection — safe to call outside a Flask request context
     (e.g. from Connexion's ASGI security middleware).
-    Returns None if the token does not exist.
+    Returns None if the token does not exist or has expired.
     """
     with db.engine.connect() as conn:
         row = (

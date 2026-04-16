@@ -285,7 +285,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/Node"
+            $ref: "#/components/schemas/NodeChild"
 
     TagPage:
       type: object
@@ -308,6 +308,8 @@ components:
       properties:
         label:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type: string
           nullable: true
@@ -330,6 +332,8 @@ components:
       properties:
         label:
           type: string
+          minLength: 1
+          maxLength: 255
         description:
           type: string
           nullable: true

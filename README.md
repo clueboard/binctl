@@ -47,6 +47,10 @@ It's backed by a Flask API with a CLI frontend.
 - `python manage.py list-tokens` - list tokens for a user
 - `python manage.py revoke-tokens` - revoke all tokens for a user
 
+## Known Limitations
+
+- **No rate limiting on `POST /v1/auth/login`** — scrypt makes each attempt slow, but a determined attacker can still brute-force credentials over time. If the server is exposed to untrusted networks, put a reverse proxy (nginx, Caddy, etc.) in front and configure request rate limiting there.
+
 ## Tests / CI
 
 The following must pass before merging:

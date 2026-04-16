@@ -31,6 +31,8 @@ def create_user(cli):
     if password != confirm:
         cli.log.error('Passwords do not match')
         raise SystemExit(1)
+    if len(password) < 4:
+        cli.log.warning('Password is very short (fewer than 4 characters)')
 
     try:
         _db.create_user(username, password)
