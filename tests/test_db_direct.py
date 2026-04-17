@@ -26,10 +26,14 @@ class TestCreateUser:
     def test_no_password_stores_sentinel(self, clean_db):
         user_id = create_user('tokenonly', password=None)
         with db.engine.connect() as conn:
-            row = conn.execute(
-                text('SELECT password_hash FROM users WHERE id = :id'),
-                {'id': user_id},
-            ).mappings().first()
+            row = (
+                conn.execute(
+                    text('SELECT password_hash FROM users WHERE id = :id'),
+                    {'id': user_id},
+                )
+                .mappings()
+                .first()
+            )
         assert row is not None
         assert row['password_hash'] == '!'
 
@@ -121,10 +125,14 @@ class TestUpdatePassword:
         result = update_password('alice', 'newpass')
         assert result is True
         with db.engine.connect() as conn:
-            row = conn.execute(
-                text('SELECT password_hash FROM users WHERE username = :u'),
-                {'u': 'alice'},
-            ).mappings().first()
+            row = (
+                conn.execute(
+                    text('SELECT password_hash FROM users WHERE username = :u'),
+                    {'u': 'alice'},
+                )
+                .mappings()
+                .first()
+            )
         assert row is not None
         assert row['password_hash'] != 'oldpass'
         assert row['password_hash'].startswith('scrypt:')
