@@ -11,44 +11,50 @@ It's backed by a Flask API with a CLI frontend.
 
 ## Quickstart (SQLite, local dev)
 
-The fastest path to a running system. Run each block in your terminal:
+The fastest path to a running system. Requires Python 3.11+. Run each block in your terminal:
 
 ```bash
-# 1. Install uv (skip if already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 1. Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# 2. Install all dependencies — binctl-client is a bundled workspace package
-cd binctl
-uv sync
+# 2. Install dependencies — binctl-client is a bundled local package
+pip install -e ./binctl-client
+pip install -e .
 
 # 3. Configure the database — copy .env.example and uncomment the SQLite line
 cp .env.example .env
 # In .env, uncomment: DATABASE_URL=sqlite:///binctl.db
 
 # 4. Initialize the database
-uv run python manage.py init-db
+python manage.py init-db
 
 # 5. Create a user and get a token
-uv run python manage.py create-user --username alice --token
+python manage.py create-user --username alice --token
 # → prints something like: token: abc123...
 export TOKEN=<paste token here>
 
 # 6. Start the server (keep this terminal open, or run it in the background)
-uv run uvicorn web:create_app --factory
+uvicorn web:create_app --factory
 
-# 7. In another terminal, verify it works
+# 7. In another terminal (with .venv activated), verify it works
 binctl --token $TOKEN node list
 ```
 
 ## Setup
 
-1. Install dependencies with `uv sync` — this installs `binctl`, `binctl-client` (a local workspace
-   package), and all other requirements in one step. `uv` must be installed first (see Quickstart
-   above).
+1. Create and activate a virtual environment, then install dependencies:
+   ```
+   python3 -m venv .venv
+   source .venv/bin/activate   # Windows: .venv\Scripts\activate
+   pip install -e ./binctl-client
+   pip install -e .
+   ```
+   `binctl-client` is a local workspace package — it must be installed before `binctl`.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
-   - **MySQL:** `uv pip install 'binctl[mysql]'`  or  `pip install pymysql`
-   - **PostgreSQL:** `uv pip install 'binctl[postgresql]'`  or  `pip install psycopg2-binary`
+   - **MySQL:** `pip install pymysql`  or  `pip install 'binctl[mysql]'`
+   - **PostgreSQL:** `pip install psycopg2-binary`  or  `pip install 'binctl[postgresql]'`
    - **SQLite** — no extra driver needed, skip this step.
 
 2. Copy `.env.example` and set your database URL:
@@ -151,14 +157,31 @@ binctl --token $TOKEN node update --node-id yR7nTs2CCE --no-parent
 
 **Password policy** — `set-password` enforces a minimum of 6 characters. No other complexity requirements are enforced by the application. Choose a strong password of at least 16 characters using a mix of uppercase letters, lowercase letters, digits, and symbols.
 
-## Tests / CI
+## Development (uv)
 
-The following must pass before merging:
+Contributors can use [uv](https://docs.astral.sh/uv/) for a faster workflow. `uv sync` handles `binctl-client` automatically via the workspace config in `pyproject.toml`.
 
-```
+```bash
+# Install uv (skip if already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install all dependencies including dev tools
+uv sync
+
+# Run checks
 uv run pytest
 uv run ruff check
 uv run ty check
+```
+
+## Tests / CI
+
+The following must pass before merging (run with the venv activated):
+
+```
+pytest
+ruff check
+ty check
 ```
 
 ---
@@ -202,15 +225,12 @@ Tags are exposed via `binctl tag list|get|create|update`.
 
 ## Troubleshooting
 
-**`uv: command not found`**
-Install uv first: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-
 **`ModuleNotFoundError: No module named 'binctl_client'`**
-Run `uv sync` from the repo root. `binctl-client` is a local workspace package — it is not on PyPI
-and won't be found by a plain `pip install binctl`.
+`binctl-client` is a local package — it is not on PyPI and must be installed separately.
+Run `pip install -e ./binctl-client` before `pip install -e .`, or use `uv sync` (see Development above).
 
 **`Connection refused` / `Failed to connect` when running `binctl` commands**
-The server is not running. Start it with `uv run uvicorn web:create_app --factory` (binds to
+The server is not running. Start it with `uvicorn web:create_app --factory` (binds to
 `http://localhost:5000` by default). If you changed the port, pass `--base-url http://localhost:<port>`
 to `binctl`.
 
