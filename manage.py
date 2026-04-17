@@ -5,6 +5,10 @@ import getpass
 import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)

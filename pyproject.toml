@@ -10,6 +10,7 @@ dependencies = [
     "gunicorn>=21.0",
     "milc",
     "sqlalchemy>=2.0",
+    "python-dotenv>=1.2.2",
 ]
 
 [project.optional-dependencies]

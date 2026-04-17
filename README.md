@@ -21,19 +21,22 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 cd binctl
 uv sync
 
-# 3. Initialize the database
-export DATABASE_URL=sqlite:///binctl.db
+# 3. Configure the database — copy .env.example and uncomment the SQLite line
+cp .env.example .env
+# In .env, uncomment: DATABASE_URL=sqlite:///binctl.db
+
+# 4. Initialize the database
 uv run python manage.py init-db
 
-# 4. Create a user and get a token
+# 5. Create a user and get a token
 uv run python manage.py create-user --username alice --token
 # → prints something like: token: abc123...
 export TOKEN=<paste token here>
 
-# 5. Start the server (keep this terminal open, or run it in the background)
+# 6. Start the server (keep this terminal open, or run it in the background)
 uv run uvicorn web:create_app --factory
 
-# 6. In another terminal, verify it works
+# 7. In another terminal, verify it works
 binctl --token $TOKEN node list
 ```
 
@@ -57,9 +60,10 @@ binctl --token $TOKEN node list
    - MySQL: `mysql+pymysql://user:password@localhost/binctl`
    - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
 
+   The server and `manage.py` load `.env` automatically — no manual `export` needed.
+
 3. Initialize the database:
    ```
-   export DATABASE_URL=sqlite:///binctl.db
    python manage.py init-db
    ```
 

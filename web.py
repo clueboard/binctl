@@ -4,6 +4,7 @@ import os
 
 import connexion
 from connexion.middleware import MiddlewarePosition
+from dotenv import load_dotenv
 from flask import g, jsonify
 from starlette.middleware.cors import CORSMiddleware
 
@@ -30,6 +31,7 @@ _LOGGING_CONFIG = {
 
 
 def create_app():
+    load_dotenv()
     logging.config.dictConfig(_LOGGING_CONFIG)
 
     cors_origins_raw = os.environ.get('CORS_ORIGINS', '')
