@@ -128,7 +128,7 @@ def patch_tag_update(tag_id: str) -> Response:
         return error(404, 'Tag not found')
     tag = fetch_tag(tag_id_int)
     if tag is None:
-        logger.error('fetch_tag returned None after update_tag succeeded for tag_id=%d', tag_id)
+        logger.error('fetch_tag returned None after update_tag succeeded for tag_id=%s', tag_id)
         return error(500, 'Internal server error')
     return jsonify(tag_row_to_dict(tag))
 
