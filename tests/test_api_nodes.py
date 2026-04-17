@@ -45,6 +45,14 @@ class TestNodeCreate:
         resp = client.post('/v1/nodes', json={'label': 'item', 'tag_ids': [99999]}, headers=authed_headers)
         assert resp.status_code == 400
 
+    def test_create_invalid_parent_id_type(self, client, authed_headers):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'parent_id': 123}, headers=authed_headers)
+        assert resp.status_code == 400
+
+    def test_create_invalid_tag_id_type(self, client, authed_headers):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'tag_ids': [None]}, headers=authed_headers)
+        assert resp.status_code == 400
+
 
 class TestNodeGet:
     def test_get_detail_full(self, client, make_node, make_tag, authed_headers):
@@ -104,6 +112,18 @@ class TestNodeDeleteUnauthenticated:
     def test_delete_requires_auth(self, client):
         resp = client.delete('/v1/nodes/1')
         assert resp.status_code == 401
+
+
+class TestNodePatch:
+    def test_patch_invalid_parent_id_type(self, client, make_node, authed_headers):
+        node_id = make_node('item')
+        resp = client.patch(f'/v1/nodes/{node_id}', json={'parent_id': 123}, headers=authed_headers)
+        assert resp.status_code == 400
+
+    def test_patch_invalid_tag_id_type(self, client, make_node, authed_headers):
+        node_id = make_node('item')
+        resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [None]}, headers=authed_headers)
+        assert resp.status_code == 400
 
 
 class TestNodeDelete:
