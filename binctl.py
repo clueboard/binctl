@@ -37,10 +37,6 @@ def _get_client() -> Client:
     return Client(base_url=base_url, username=cli.config.general.username, password=cli.config.general.password)
 
 
-def _echo_json(data):
-    cli.echo(json.dumps(data, indent=4, sort_keys=True))
-
-
 _SPINNER_TEXT = {
     ('node', 'list'): 'Fetching nodes...',
     ('node', 'get'): 'Fetching node...',
@@ -96,10 +92,16 @@ def _format_tag(action, result) -> str:
 
 
 def _run_with_output(resource, action, fn, formatter):
+    if not cli.args_passed['general']['verbose']:
+        logging.getLogger('httpx').setLevel(logging.WARNING)
+        logging.getLogger('httpcore').setLevel(logging.WARNING)
+
     if cli.args.output == 'json':
         result = fn()
-        _echo_json([r.to_dict() for r in result] if isinstance(result, list) else result.to_dict())
+        data = [r.to_dict() for r in result] if isinstance(result, list) else result.to_dict()
+        cli.echo(json.dumps(data, indent=4, sort_keys=True))
         return
+
     sp = cli.spinner(_SPINNER_TEXT[(resource, action)])
     sp.start()
     try:
@@ -141,7 +143,7 @@ def _check_response(response: Response, label: str):
 )
 @cli.argument('-o', '--output', choices=['text', 'json'], default='text', help='Output format: text (human-friendly) or json (raw JSON, no spinner)')
 @cli.entrypoint('binctl: manage storage nodes and tags.')
-def entrypoint(cli):
+def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
     # If the user runs just `binctl`, print usage.
     cli.print_usage()
@@ -406,13 +408,5 @@ def tag(cli):
     raise SystemExit(1)
 
 
-def main():
-    """Handle setup before turning over to the CLI."""
-    if not cli.args_passed['general']['verbose']:
-        logging.getLogger('httpx').setLevel(logging.WARNING)
-        logging.getLogger('httpcore').setLevel(logging.WARNING)
-    cli()
-
-
 if __name__ == '__main__':
-    main()
+    cli()
