@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 import db
 from auth import generate_token, hash_password, hash_token, verify_password_hash
+from db import base62
 from db.id_gen import new_id
 
 logger = logging.getLogger(__name__)
@@ -59,7 +60,7 @@ def iso(dt: datetime | str | None) -> str | None:
 
 def node_row_to_dict(row: RowMapping) -> dict:
     return {
-        'id': row['id'],
+        'id': base62.encode(row['id']),
         'label': row['label'],
         'description': row['description'],
         'is_container': bool(row['is_container']),
@@ -70,7 +71,7 @@ def node_row_to_dict(row: RowMapping) -> dict:
 
 def tag_row_to_dict(row: RowMapping) -> dict:
     return {
-        'id': row['id'],
+        'id': base62.encode(row['id']),
         'name': row['name'],
         'created_at': iso(row['created_at']),
         'updated_at': iso(row['updated_at']),
@@ -165,7 +166,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .mappings()
         .all()
     )
-    return [{'id': r['id'], 'name': r['name'], 'created_at': iso(r['created_at']), 'updated_at': iso(r['updated_at'])} for r in rows]
+    return [tag_row_to_dict(r) for r in rows]
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:

@@ -17,7 +17,7 @@ T = TypeVar("T", bound="NodeChild")
 class NodeChild:
     """
     Attributes:
-        id (int):
+        id (str):
         label (str):
         is_container (bool):
         created_at (datetime.datetime):
@@ -25,7 +25,7 @@ class NodeChild:
         description (None | str | Unset):
     """
 
-    id: int
+    id: str
     label: str
     is_container: bool
     created_at: datetime.datetime

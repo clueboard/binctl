@@ -96,7 +96,7 @@ def _node_list(cli):
     _echo_json(cli, [n.to_dict() for n in items])
 
 
-def _node_get(cli, node_id: int):
+def _node_get(cli, node_id: str):
     client = _get_client(cli)
     response = get_node_detail.sync_detailed(client=client, node_id=node_id)
     _check_response(response, f'node {node_id}')
@@ -127,13 +127,13 @@ def _delete_response(cli, response, label: str):
     _echo_json(cli, data)
 
 
-def _node_delete(cli, node_id: int):
+def _node_delete(cli, node_id: str):
     client = _get_client(cli)
     response = delete_node_endpoint.sync_detailed(client=client, node_id=node_id)
     _delete_response(cli, response, f'node {node_id}')
 
 
-def _node_update(cli, node_id: int):
+def _node_update(cli, node_id: str):
     client = _get_client(cli)
     # Build a partial update body. Unspecified fields are left as None.
     body_kwargs = {}
@@ -181,7 +181,7 @@ def _tag_list(cli):
     _echo_json(cli, [t.to_dict() for t in items])
 
 
-def _tag_get(cli, tag_id: int):
+def _tag_get(cli, tag_id: str):
     client = _get_client(cli)
     response = get_tag_detail.sync_detailed(client=client, tag_id=tag_id)
     _check_response(response, f'tag {tag_id}')
@@ -198,13 +198,13 @@ def _tag_create(cli):
     _echo_json(cli, data)
 
 
-def _tag_delete(cli, tag_id: int):
+def _tag_delete(cli, tag_id: str):
     client = _get_client(cli)
     response = delete_tag_endpoint.sync_detailed(client=client, tag_id=tag_id)
     _delete_response(cli, response, f'tag {tag_id}')
 
 
-def _tag_update(cli, tag_id: int):
+def _tag_update(cli, tag_id: str):
     client = _get_client(cli)
     body = TagUpdate(name=cli.args.name)
     response = patch_tag_update.sync_detailed(client=client, tag_id=tag_id, body=body)
@@ -223,7 +223,7 @@ def _tag_update(cli, tag_id: int):
     choices=['list', 'get', 'create', 'update', 'delete'],
     help='Node action to perform: list|get|create|update|delete',
 )
-@cli.argument('--node-id', type=int, help='Node ID (required for get/update/delete)')
+@cli.argument('--node-id', type=str, help='Node ID (required for get/update/delete)')
 @cli.argument('--label', help='Label for create/update')
 @cli.argument('--description', help='Description for create/update', default=None)
 @cli.argument(
@@ -231,9 +231,9 @@ def _tag_update(cli, tag_id: int):
     action='store_boolean',
     help='Set container flag (create defaults to False)',
 )
-@cli.argument('--parent-id', type=int, default=None, help='Parent node ID')
+@cli.argument('--parent-id', type=str, default=None, help='Parent node ID')
 @cli.argument('--no-parent', action='store_true', default=False, help='Detach node from its parent')
-@cli.argument('--tag-id', type=int, nargs='*', help='Tag IDs to attach/replace')
+@cli.argument('--tag-id', type=str, nargs='*', help='Tag IDs to attach/replace')
 @cli.subcommand('Node operations: list, get, create, update, delete.')
 def node(cli):
     """binctl node <action> [options]"""
@@ -297,7 +297,7 @@ def node(cli):
     choices=['list', 'get', 'create', 'update', 'delete'],
     help='Tag action to perform: list|get|create|update|delete',
 )
-@cli.argument('--tag-id', type=int, help='Tag ID (required for get/update/delete)')
+@cli.argument('--tag-id', type=str, help='Tag ID (required for get/update/delete)')
 @cli.argument('--name', help='Tag name for create/update')
 @cli.subcommand('Tag operations: list, get, create, update, delete.')
 def tag(cli):

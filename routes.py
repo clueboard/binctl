@@ -3,6 +3,7 @@ import logging
 from flask import Response, jsonify, request
 from werkzeug.exceptions import BadRequest
 
+from db import base62
 from db.flask import (
     count_nodes,
     count_tags,
@@ -26,6 +27,13 @@ from db.flask import (
 from web import error
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_id(raw: str, name: str) -> int:
+    try:
+        return base62.decode(raw)
+    except ValueError:
+        raise BadRequest(f'invalid {name}: {raw!r}')
 
 
 def _parse_json_body() -> dict:
@@ -61,12 +69,13 @@ def get_tags_list() -> Response:
     )
 
 
-def get_tag_detail(tag_id: int) -> Response:
-    tag = fetch_tag(tag_id)
+def get_tag_detail(tag_id: str) -> Response:
+    tag_id_int = _decode_id(tag_id, 'tag_id')
+    tag = fetch_tag(tag_id_int)
     if not tag:
         return error(404, 'Tag not found')
 
-    nodes = fetch_nodes_for_tag(tag_id)
+    nodes = fetch_nodes_for_tag(tag_id_int)
 
     return jsonify(
         {
@@ -94,8 +103,8 @@ def post_tag_create() -> Response:
     return resp
 
 
-def delete_tag_endpoint(tag_id: int) -> Response:
-    delete_op = delete_tag(tag_id)
+def delete_tag_endpoint(tag_id: str) -> Response:
+    delete_op = delete_tag(_decode_id(tag_id, 'tag_id'))
 
     if delete_op is None:
         return error(404, 'Tag not found')
@@ -105,18 +114,19 @@ def delete_tag_endpoint(tag_id: int) -> Response:
     return jsonify({'deleted': {'total': total, 'associations': node_count}})
 
 
-def patch_tag_update(tag_id: int) -> Response:
+def patch_tag_update(tag_id: str) -> Response:
+    tag_id_int = _decode_id(tag_id, 'tag_id')
     data = _parse_json_body()
     name = data['name']
 
     try:
-        rowcount = update_tag(tag_id, name)
+        rowcount = update_tag(tag_id_int, name)
     except ValueError as e:
         return error(409, str(e))
 
     if rowcount == 0:
         return error(404, 'Tag not found')
-    tag = fetch_tag(tag_id)
+    tag = fetch_tag(tag_id_int)
     if tag is None:
         logger.error('fetch_tag returned None after update_tag succeeded for tag_id=%d', tag_id)
         return error(500, 'Internal server error')
@@ -141,18 +151,19 @@ def get_nodes_list() -> Response:
     return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': [node_row_to_dict(r) for r in rows]})
 
 
-def get_node_detail(node_id: int) -> Response:
-    row = fetch_node(node_id)
+def get_node_detail(node_id: str) -> Response:
+    node_id_int = _decode_id(node_id, 'node_id')
+    row = fetch_node(node_id_int)
 
     if not row:
         return error(404, 'Node not found')
 
-    parent_id = fetch_parent_id(node_id)
-    children = fetch_children(node_id)
-    tags = fetch_tags_for_node(node_id)
+    parent_id_int = fetch_parent_id(node_id_int)
+    children = fetch_children(node_id_int)
+    tags = fetch_tags_for_node(node_id_int)
 
     node = node_row_to_dict(row)
-    node['parent_id'] = parent_id
+    node['parent_id'] = base62.encode(parent_id_int) if parent_id_int is not None else None
     node['children'] = children
     node['tags'] = tags
 
@@ -174,11 +185,17 @@ def post_node_create() -> Response:
     if description == '':
         return error(400, 'description cannot be empty')
     is_container = bool(data.get('is_container', False))
-    parent_id = data.get('parent_id')
-    tag_ids = data.get('tag_ids') or []
+    raw_parent_id = data.get('parent_id')
+    raw_tag_ids = data.get('tag_ids') or []
 
     try:
-        node_id = create_node(label, description, is_container, parent_id=parent_id, tag_ids=tag_ids)
+        parent_id_int = _decode_id(raw_parent_id, 'parent_id') if raw_parent_id is not None else None
+        tag_id_ints = [_decode_id(t, 'tag_ids') for t in raw_tag_ids]
+    except BadRequest as e:
+        return error(400, e.description)
+
+    try:
+        node_id = create_node(label, description, is_container, parent_id=parent_id_int, tag_ids=tag_id_ints)
     except ValueError as ve:
         logger.error(f'Validation error in post_node_create: {ve}')
         return error(400, str(ve))
@@ -188,12 +205,12 @@ def post_node_create() -> Response:
     if row is None:
         logger.error('fetch_node returned None after create_node succeeded for node_id=%d', node_id)
         return error(500, 'Internal server error')
-    parent_id = fetch_parent_id(node_id)
+    parent_id_int = fetch_parent_id(node_id)
     children = fetch_children(node_id)
     tags = fetch_tags_for_node(node_id)
 
     node = node_row_to_dict(row)
-    node['parent_id'] = parent_id
+    node['parent_id'] = base62.encode(parent_id_int) if parent_id_int is not None else None
     node['children'] = children
     node['tags'] = tags
 
@@ -203,7 +220,8 @@ def post_node_create() -> Response:
     return resp
 
 
-def patch_node_update(node_id: int) -> Response:
+def patch_node_update(node_id: str) -> Response:
+    node_id_int = _decode_id(node_id, 'node_id')
     data = _parse_json_body()
     fields = {}
 
@@ -223,19 +241,25 @@ def patch_node_update(node_id: int) -> Response:
         fields['is_container'] = bool(data['is_container'])
 
     parent_provided = 'parent_id' in data
-    parent_id = data.get('parent_id') if parent_provided else None
+    raw_parent_id = data.get('parent_id') if parent_provided else None
 
     tag_ids_provided = 'tag_ids' in data
-    tag_ids = data.get('tag_ids') or []
+    raw_tag_ids = data.get('tag_ids') or []
+
+    try:
+        parent_id_int = _decode_id(raw_parent_id, 'parent_id') if raw_parent_id is not None else None
+        tag_id_ints = [_decode_id(t, 'tag_ids') for t in raw_tag_ids]
+    except BadRequest as e:
+        return error(400, e.description)
 
     try:
         found = update_node(
-            node_id,
+            node_id_int,
             fields,
             parent_provided=parent_provided,
-            parent_id=parent_id,
+            parent_id=parent_id_int,
             tag_ids_provided=tag_ids_provided,
-            tag_ids=tag_ids,
+            tag_ids=tag_id_ints,
         )
     except ValueError as ve:
         logger.error(f'Validation error in patch_node_update for node {node_id}: {ve}')
@@ -245,24 +269,24 @@ def patch_node_update(node_id: int) -> Response:
         return error(404, 'Node not found')
 
     # Return updated representation
-    row = fetch_node(node_id)
+    row = fetch_node(node_id_int)
     if row is None:
-        logger.error('fetch_node returned None after update succeeded for node_id=%d', node_id)
+        logger.error('fetch_node returned None after update succeeded for node_id=%d', node_id_int)
         return error(500, 'Internal server error')
-    parent_id = fetch_parent_id(node_id)
-    children = fetch_children(node_id)
-    tags = fetch_tags_for_node(node_id)
+    parent_id_int = fetch_parent_id(node_id_int)
+    children = fetch_children(node_id_int)
+    tags = fetch_tags_for_node(node_id_int)
 
     node = node_row_to_dict(row)
-    node['parent_id'] = parent_id
+    node['parent_id'] = base62.encode(parent_id_int) if parent_id_int is not None else None
     node['children'] = children
     node['tags'] = tags
 
     return jsonify(node)
 
 
-def delete_node_endpoint(node_id: int) -> Response:
-    delete_op = delete_node(node_id)
+def delete_node_endpoint(node_id: str) -> Response:
+    delete_op = delete_node(_decode_id(node_id, 'node_id'))
 
     if delete_op is None:
         return error(404, 'Node not found')

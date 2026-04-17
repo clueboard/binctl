@@ -6,6 +6,8 @@ and verify the expected cascade effects via the HTTP API and direct DB queries.
 
 from sqlalchemy import text
 
+from db import base62
+
 
 class TestNodeDeleteCascade:
     def test_delete_node_orphans_children(self, client, engine, make_node, authed_headers):
@@ -14,7 +16,7 @@ class TestNodeDeleteCascade:
 
         # Delete parent via raw SQL
         with engine.connect() as conn:
-            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': parent_id})
+            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': base62.decode(parent_id)})
             conn.commit()
 
         # Child node still exists but has no parent
@@ -27,14 +29,14 @@ class TestNodeDeleteCascade:
         child_id = make_node('child', parent_id=parent_id)
 
         with engine.connect() as conn:
-            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': parent_id})
+            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': base62.decode(parent_id)})
             conn.commit()
 
         # The edges row for this parent-child pair must be gone
         with engine.connect() as conn:
             row = conn.execute(
                 text('SELECT 1 FROM edges WHERE child_id = :id'),
-                {'id': child_id},
+                {'id': base62.decode(child_id)},
             ).first()
         assert row is None
 
@@ -43,18 +45,18 @@ class TestNodeDeleteCascade:
         node_id = make_node('item', tag_ids=[tag_id])
 
         with engine.connect() as conn:
-            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': node_id})
+            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': base62.decode(node_id)})
             conn.commit()
 
         # tag_node row is gone but the tag itself survives
         with engine.connect() as conn:
             tn_row = conn.execute(
                 text('SELECT 1 FROM tag_node WHERE node_id = :id'),
-                {'id': node_id},
+                {'id': base62.decode(node_id)},
             ).first()
             tag_row = conn.execute(
                 text('SELECT 1 FROM tags WHERE id = :id'),
-                {'id': tag_id},
+                {'id': base62.decode(tag_id)},
             ).first()
         assert tn_row is None
         assert tag_row is not None
@@ -66,7 +68,7 @@ class TestNodeDeleteCascade:
 
         # Delete top-level A
         with engine.connect() as conn:
-            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': a_id})
+            conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': base62.decode(a_id)})
             conn.commit()
 
         # B and C still exist; C's parent is still B
@@ -86,18 +88,18 @@ class TestTagDeleteCascade:
         node_id = make_node('item', tag_ids=[tag_id])
 
         with engine.connect() as conn:
-            conn.execute(text('DELETE FROM tags WHERE id = :id'), {'id': tag_id})
+            conn.execute(text('DELETE FROM tags WHERE id = :id'), {'id': base62.decode(tag_id)})
             conn.commit()
 
         # tag_node row is gone but the node survives
         with engine.connect() as conn:
             tn_row = conn.execute(
                 text('SELECT 1 FROM tag_node WHERE tag_id = :id'),
-                {'id': tag_id},
+                {'id': base62.decode(tag_id)},
             ).first()
             node_row = conn.execute(
                 text('SELECT 1 FROM nodes WHERE id = :id'),
-                {'id': node_id},
+                {'id': base62.decode(node_id)},
             ).first()
         assert tn_row is None
         assert node_row is not None

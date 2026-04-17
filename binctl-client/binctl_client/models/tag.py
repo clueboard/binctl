@@ -15,13 +15,13 @@ T = TypeVar("T", bound="Tag")
 class Tag:
     """
     Attributes:
-        id (int):
+        id (str):
         name (str):
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
     """
 
-    id: int
+    id: str
     name: str
     created_at: datetime.datetime
     updated_at: datetime.datetime

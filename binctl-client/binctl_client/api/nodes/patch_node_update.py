@@ -12,7 +12,7 @@ from ...types import Response
 
 
 def _get_kwargs(
-    node_id: int,
+    node_id: str,
     *,
     body: NodeUpdate,
 ) -> dict[str, Any]:
@@ -59,7 +59,7 @@ def _build_response(*, client: Client, response: httpx.Response) -> Response[Any
 
 
 def sync_detailed(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
     body: NodeUpdate,
@@ -67,7 +67,7 @@ def sync_detailed(
     """Update an existing node
 
     Args:
-        node_id (int):
+        node_id (str):
         body (NodeUpdate):
 
     Raises:
@@ -91,7 +91,7 @@ def sync_detailed(
 
 
 def sync(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
     body: NodeUpdate,
@@ -99,7 +99,7 @@ def sync(
     """Update an existing node
 
     Args:
-        node_id (int):
+        node_id (str):
         body (NodeUpdate):
 
     Raises:
@@ -118,7 +118,7 @@ def sync(
 
 
 async def asyncio_detailed(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
     body: NodeUpdate,
@@ -126,7 +126,7 @@ async def asyncio_detailed(
     """Update an existing node
 
     Args:
-        node_id (int):
+        node_id (str):
         body (NodeUpdate):
 
     Raises:
@@ -148,7 +148,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
     body: NodeUpdate,
@@ -156,7 +156,7 @@ async def asyncio(
     """Update an existing node
 
     Args:
-        node_id (int):
+        node_id (str):
         body (NodeUpdate):
 
     Raises:

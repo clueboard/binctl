@@ -11,7 +11,7 @@ from ...types import Response
 
 
 def _get_kwargs(
-    node_id: int,
+    node_id: str,
 ) -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
@@ -50,14 +50,14 @@ def _build_response(*, client: Client, response: httpx.Response) -> Response[Any
 
 
 def sync_detailed(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
 ) -> Response[Any | Node]:
     """Get a node by ID
 
     Args:
-        node_id (int):
+        node_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -79,14 +79,14 @@ def sync_detailed(
 
 
 def sync(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
 ) -> Any | Node | None:
     """Get a node by ID
 
     Args:
-        node_id (int):
+        node_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -103,14 +103,14 @@ def sync(
 
 
 async def asyncio_detailed(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
 ) -> Response[Any | Node]:
     """Get a node by ID
 
     Args:
-        node_id (int):
+        node_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -130,14 +130,14 @@ async def asyncio_detailed(
 
 
 async def asyncio(
-    node_id: int,
+    node_id: str,
     *,
     client: Client,
 ) -> Any | Node | None:
     """Get a node by ID
 
     Args:
-        node_id (int):
+        node_id (str):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.

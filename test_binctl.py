@@ -66,8 +66,8 @@ class TestNodeUpdate(unittest.TestCase):
                 mock_sync.return_value = _mock_response()
                 import binctl as bc
 
-                cli = _make_cli(_make_cli_args(label='updated', node_id=1))
-                bc._node_update(cli, node_id=1)
+                cli = _make_cli(_make_cli_args(label='updated', node_id='1'))
+                bc._node_update(cli, node_id='1')
 
                 _, kwargs = mock_sync.call_args
                 self.assertIn('body', kwargs)
@@ -96,7 +96,7 @@ class TestTagUpdate(unittest.TestCase):
             import binctl as bc
 
             cli = _make_cli(_make_cli_args(name='renamed'))
-            bc._tag_update(cli, tag_id=1)
+            bc._tag_update(cli, tag_id='1')
 
             _, kwargs = mock_sync.call_args
             self.assertIn('body', kwargs)
@@ -110,8 +110,8 @@ class TestNodeDetach(unittest.TestCase):
             mock_sync.return_value = _mock_response()
             import binctl as bc
 
-            cli = _make_cli(_make_cli_args(node_id=1, no_parent=True))
-            bc._node_update(cli, node_id=1)
+            cli = _make_cli(_make_cli_args(node_id='1', no_parent=True))
+            bc._node_update(cli, node_id='1')
 
             _, kwargs = mock_sync.call_args
             body = kwargs['body']

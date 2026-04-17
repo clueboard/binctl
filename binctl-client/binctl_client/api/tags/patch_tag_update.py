@@ -12,7 +12,7 @@ from ...types import Response
 
 
 def _get_kwargs(
-    tag_id: int,
+    tag_id: str,
     *,
     body: TagUpdate,
 ) -> dict[str, Any]:
@@ -59,7 +59,7 @@ def _build_response(*, client: Client, response: httpx.Response) -> Response[Any
 
 
 def sync_detailed(
-    tag_id: int,
+    tag_id: str,
     *,
     client: Client,
     body: TagUpdate,
@@ -67,7 +67,7 @@ def sync_detailed(
     """Update a tag
 
     Args:
-        tag_id (int):
+        tag_id (str):
         body (TagUpdate):
 
     Raises:
@@ -91,7 +91,7 @@ def sync_detailed(
 
 
 def sync(
-    tag_id: int,
+    tag_id: str,
     *,
     client: Client,
     body: TagUpdate,
@@ -99,7 +99,7 @@ def sync(
     """Update a tag
 
     Args:
-        tag_id (int):
+        tag_id (str):
         body (TagUpdate):
 
     Raises:
@@ -118,7 +118,7 @@ def sync(
 
 
 async def asyncio_detailed(
-    tag_id: int,
+    tag_id: str,
     *,
     client: Client,
     body: TagUpdate,
@@ -126,7 +126,7 @@ async def asyncio_detailed(
     """Update a tag
 
     Args:
-        tag_id (int):
+        tag_id (str):
         body (TagUpdate):
 
     Raises:
@@ -148,7 +148,7 @@ async def asyncio_detailed(
 
 
 async def asyncio(
-    tag_id: int,
+    tag_id: str,
     *,
     client: Client,
     body: TagUpdate,
@@ -156,7 +156,7 @@ async def asyncio(
     """Update a tag
 
     Args:
-        tag_id (int):
+        tag_id (str):
         body (TagUpdate):
 
     Raises:

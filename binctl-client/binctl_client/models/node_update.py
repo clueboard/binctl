@@ -18,15 +18,15 @@ class NodeUpdate:
         label (str | Unset):
         description (None | str | Unset):
         is_container (bool | Unset):
-        parent_id (int | None | Unset):
-        tag_ids (list[int] | Unset):
+        parent_id (None | str | Unset):
+        tag_ids (list[str] | Unset):
     """
 
     label: str | Unset = UNSET
     description: None | str | Unset = UNSET
     is_container: bool | Unset = UNSET
-    parent_id: int | None | Unset = UNSET
-    tag_ids: list[int] | Unset = UNSET
+    parent_id: None | str | Unset = UNSET
+    tag_ids: list[str] | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -40,13 +40,13 @@ class NodeUpdate:
 
         is_container = self.is_container
 
-        parent_id: int | None | Unset
+        parent_id: None | str | Unset
         if isinstance(self.parent_id, Unset):
             parent_id = UNSET
         else:
             parent_id = self.parent_id
 
-        tag_ids: list[int] | Unset = UNSET
+        tag_ids: list[str] | Unset = UNSET
         if not isinstance(self.tag_ids, Unset):
             tag_ids = self.tag_ids
 
@@ -82,16 +82,16 @@ class NodeUpdate:
 
         is_container = d.pop("is_container", UNSET)
 
-        def _parse_parent_id(data: object) -> int | None | Unset:
+        def _parse_parent_id(data: object) -> None | str | Unset:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(None | str | Unset, data)
 
         parent_id = _parse_parent_id(d.pop("parent_id", UNSET))
 
-        tag_ids = cast(list[int], d.pop("tag_ids", UNSET))
+        tag_ids = cast(list[str], d.pop("tag_ids", UNSET))
 
         node_update = cls(
             label=label,

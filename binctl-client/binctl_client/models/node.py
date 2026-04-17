@@ -22,24 +22,24 @@ T = TypeVar("T", bound="Node")
 class Node:
     """
     Attributes:
-        id (int):
+        id (str):
         label (str):
         is_container (bool):
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
         description (None | str | Unset):
-        parent_id (int | None | Unset):
+        parent_id (None | str | Unset):
         children (list[NodeChild] | Unset):
         tags (list[Tag] | Unset):
     """
 
-    id: int
+    id: str
     label: str
     is_container: bool
     created_at: datetime.datetime
     updated_at: datetime.datetime
     description: None | str | Unset = UNSET
-    parent_id: int | None | Unset = UNSET
+    parent_id: None | str | Unset = UNSET
     children: list[NodeChild] | Unset = UNSET
     tags: list[Tag] | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
@@ -61,7 +61,7 @@ class Node:
         else:
             description = self.description
 
-        parent_id: int | None | Unset
+        parent_id: None | str | Unset
         if isinstance(self.parent_id, Unset):
             parent_id = UNSET
         else:
@@ -128,12 +128,12 @@ class Node:
 
         description = _parse_description(d.pop("description", UNSET))
 
-        def _parse_parent_id(data: object) -> int | None | Unset:
+        def _parse_parent_id(data: object) -> None | str | Unset:
             if data is None:
                 return data
             if isinstance(data, Unset):
                 return data
-            return cast(int | None | Unset, data)
+            return cast(None | str | Unset, data)
 
         parent_id = _parse_parent_id(d.pop("parent_id", UNSET))
 
