@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """manage.py: Server-side admin operations for binctl."""
 
+import getpass
 import os
 import sys
 
@@ -64,6 +65,23 @@ def create_user(cli):
             cli.log.error('Error: %s', exc)
             raise SystemExit(1)
         cli.log.info(f"User '{username}' created.")
+
+
+@cli.argument('username', help='Username to update')
+@cli.subcommand('Set password for a user.')
+def set_password(cli):
+    password = getpass.getpass('New password: ')
+    if len(password) < 6:
+        cli.log.error('Password must be at least 6 characters')
+        raise SystemExit(1)
+    confirm = getpass.getpass('Confirm password: ')
+    if password != confirm:
+        cli.log.error('Passwords do not match')
+        raise SystemExit(1)
+    if not db.direct.update_password(cli.args.username, password):
+        cli.log.error("User '%s' not found.", cli.args.username)
+        raise SystemExit(1)
+    cli.log.info(f"Password updated for '{cli.args.username}'.")
 
 
 @cli.subcommand('List all users.')

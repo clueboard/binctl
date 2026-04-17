@@ -124,3 +124,41 @@ class TestCreateUser:
             manage.create_user(mock_cli)
         assert exc_info.value.code == 1
         mock_cli.log.error.assert_called_once()
+
+
+class TestSetPassword:
+    def test_success(self):
+        mock_cli = _mock_cli(username='alice')
+        with (
+            patch('getpass.getpass', return_value='newpass123'),
+            patch.object(manage.db.direct, 'update_password', return_value=True),
+        ):
+            manage.set_password(mock_cli)
+        mock_cli.log.info.assert_called_once()
+
+    def test_password_too_short(self):
+        mock_cli = _mock_cli(username='alice')
+        with patch('getpass.getpass', return_value='abc'):
+            with pytest.raises(SystemExit) as exc_info:
+                manage.set_password(mock_cli)
+        assert exc_info.value.code == 1
+        mock_cli.log.error.assert_called_once()
+
+    def test_password_mismatch(self):
+        mock_cli = _mock_cli(username='alice')
+        with patch('getpass.getpass', side_effect=['longpass1', 'longpass2']):
+            with pytest.raises(SystemExit) as exc_info:
+                manage.set_password(mock_cli)
+        assert exc_info.value.code == 1
+        assert 'match' in mock_cli.log.error.call_args[0][0]
+
+    def test_user_not_found(self):
+        mock_cli = _mock_cli(username='nobody')
+        with (
+            patch('getpass.getpass', return_value='validpass'),
+            patch.object(manage.db.direct, 'update_password', return_value=False),
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                manage.set_password(mock_cli)
+        assert exc_info.value.code == 1
+        mock_cli.log.error.assert_called_once()

@@ -73,6 +73,17 @@ def create_token(user_id: int, expires_at: str | None = None) -> str:
     return token
 
 
+def update_password(username: str, password: str) -> bool:
+    """Update password for username. Returns False if user not found."""
+    with db.engine.connect() as conn:
+        result = conn.execute(
+            text('UPDATE users SET password_hash = :h WHERE username = :u'),
+            {'h': hash_password(password), 'u': username},
+        )
+        conn.commit()
+    return result.rowcount > 0
+
+
 def fetch_all_users() -> Sequence[RowMapping]:
     with db.engine.connect() as conn:
         return conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()

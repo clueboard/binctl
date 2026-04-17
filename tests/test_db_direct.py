@@ -8,6 +8,7 @@ from db.direct import (
     fetch_all_users,
     fetch_tokens_for_username,
     revoke_tokens_for_username,
+    update_password,
 )
 
 
@@ -112,3 +113,22 @@ class TestRevokeTokensForUsername:
         revoke_tokens_for_username('alice')
         bob_tokens = fetch_tokens_for_username('bob')
         assert bob_tokens is not None and len(bob_tokens) == 1
+
+
+class TestUpdatePassword:
+    def test_updates_password(self, clean_db):
+        create_user('alice', 'oldpass')
+        result = update_password('alice', 'newpass')
+        assert result is True
+        with db.engine.connect() as conn:
+            row = conn.execute(
+                text('SELECT password_hash FROM users WHERE username = :u'),
+                {'u': 'alice'},
+            ).mappings().first()
+        assert row is not None
+        assert row['password_hash'] != 'oldpass'
+        assert row['password_hash'].startswith('scrypt:')
+
+    def test_unknown_user_returns_false(self, clean_db):
+        result = update_password('nobody', 'newpass')
+        assert result is False
