@@ -9,15 +9,32 @@ if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)
 
+from pathlib import Path  # noqa: E402
+
+import sqlalchemy  # noqa: E402
 from milc import cli  # noqa: E402
 
-import db.direct as _db  # noqa: E402
+import db  # noqa: E402
+import db.direct  # noqa: E402
 
 
 @cli.entrypoint('manage: binctl server administration.')
 def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
     cli.print_usage()
+
+
+@cli.subcommand('Initialize the database schema.')
+def init_db(cli):
+    schema = Path(__file__).parent / 'schemas' / 'v1.sql'
+    sql = schema.read_text()
+    with db.engine.connect() as conn:
+        for stmt in sql.split(';'):
+            stmt = stmt.strip()
+            if stmt:
+                conn.execute(sqlalchemy.text(stmt))
+        conn.commit()
+    cli.log.info('Database initialized.')
 
 
 @cli.subcommand('Create a new user.')
@@ -35,7 +52,7 @@ def create_user(cli):
         cli.log.warning('Password is very short (fewer than 4 characters)')
 
     try:
-        _db.create_user(username, password)
+        db.direct.create_user(username, password)
         cli.log.info(f"User '{username}' created.")
     except Exception as exc:
         cli.log.error('Error: %s', exc)
@@ -44,7 +61,7 @@ def create_user(cli):
 
 @cli.subcommand('List all users.')
 def list_users(cli):
-    rows = _db.fetch_all_users()
+    rows = db.direct.fetch_all_users()
     if not rows:
         cli.log.info('No users.')
         return
@@ -55,7 +72,7 @@ def list_users(cli):
 @cli.argument('username', help='Username to look up')
 @cli.subcommand('List tokens for a user.')
 def list_tokens(cli):
-    rows = _db.fetch_tokens_for_username(cli.args.username)
+    rows = db.direct.fetch_tokens_for_username(cli.args.username)
     if rows is None:
         cli.log.error("User '%s' not found.", cli.args.username)
         raise SystemExit(1)
@@ -69,7 +86,7 @@ def list_tokens(cli):
 @cli.argument('username', help='Username to revoke tokens for')
 @cli.subcommand('Revoke all tokens for a user.')
 def revoke_tokens(cli):
-    count = _db.revoke_tokens_for_username(cli.args.username)
+    count = db.direct.revoke_tokens_for_username(cli.args.username)
     if count is None:
         cli.log.error("User '%s' not found.", cli.args.username)
         raise SystemExit(1)

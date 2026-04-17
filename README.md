@@ -18,15 +18,19 @@ It's backed by a Flask API with a CLI frontend.
 2. Install the optional driver for your database (SQLite needs none — it's built into Python):
    - **MySQL:** `pip install 'binctl[mysql]'`
    - **PostgreSQL:** `pip install 'binctl[postgresql]'`
-3. Set `DATABASE_URL` and start the server:
+3. Set `DATABASE_URL` and initialize the database:
    ```
    export DATABASE_URL=sqlite:///binctl.db
-   uvicorn web:create_app --factory
+   python manage.py init-db
    ```
    Other supported URL formats:
    - MySQL: `mysql+pymysql://user:password@localhost/binctl`
    - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
-4. Create a user and token:
+4. Start the server:
+   ```
+   uvicorn web:create_app --factory
+   ```
+5. Create a user and token:
    ```
    python manage.py create-user --username alice
    ```
@@ -39,6 +43,7 @@ It's backed by a Flask API with a CLI frontend.
 
 `manage.py` subcommands (server-side user/token management):
 
+- `python manage.py init-db` - initialize the database schema
 - `python manage.py create-user` - create a user
 - `python manage.py list-users` - list users
 - `python manage.py list-tokens` - list tokens for a user
