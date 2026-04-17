@@ -1,6 +1,5 @@
 """Tests for binctl CLI — verifies correct parameter names passed to generated client."""
 
-import sys
 import types
 import unittest
 from http import HTTPStatus
@@ -19,19 +18,21 @@ def _make_cli_args(**kwargs):
         'tag_id': None,
         'name': None,
         'node_id': None,
+        'output': 'json',
+        'verbose': False,
     }
     defaults.update(kwargs)
     return types.SimpleNamespace(**defaults)
 
 
 def _make_cli(args):
-    cli = MagicMock()
-    cli.args = args
-    cli.config.general.base_url = args.base_url
-    cli.config.general.token = 'test-token'  # provide token to avoid credential validation
-    cli.config.general.username = None
-    cli.config.general.password = None
-    return cli
+    mock_cli = MagicMock()
+    mock_cli.args = args
+    mock_cli.config.general.base_url = args.base_url
+    mock_cli.config.general.token = 'test-token'
+    mock_cli.config.general.username = None
+    mock_cli.config.general.password = None
+    return mock_cli
 
 
 def _mock_response(parsed=None):
@@ -48,11 +49,10 @@ class TestNodeCreate(unittest.TestCase):
         with patch('binctl_client.api.nodes.post_node_create.sync_detailed') as mock_sync:
             with patch('binctl.Client'):
                 mock_sync.return_value = _mock_response()
-                # Import here so patches are in place
                 import binctl as bc
 
-                cli = _make_cli(_make_cli_args(label='test', tag_id=[]))
-                bc._node_create(cli)
+                with patch.object(bc, 'cli', _make_cli(_make_cli_args(label='test', tag_id=[]))):
+                    bc._node_create()
 
                 _, kwargs = mock_sync.call_args
                 self.assertIn('body', kwargs, "Expected 'body' kwarg")
@@ -66,8 +66,8 @@ class TestNodeUpdate(unittest.TestCase):
                 mock_sync.return_value = _mock_response()
                 import binctl as bc
 
-                cli = _make_cli(_make_cli_args(label='updated', node_id='1'))
-                bc._node_update(cli, node_id='1')
+                with patch.object(bc, 'cli', _make_cli(_make_cli_args(label='updated', node_id='1'))):
+                    bc._node_update()
 
                 _, kwargs = mock_sync.call_args
                 self.assertIn('body', kwargs)
@@ -81,8 +81,8 @@ class TestTagCreate(unittest.TestCase):
                 mock_sync.return_value = _mock_response()
                 import binctl as bc
 
-                cli = _make_cli(_make_cli_args(name='mytag'))
-                bc._tag_create(cli)
+                with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='mytag'))):
+                    bc._tag_create()
 
                 _, kwargs = mock_sync.call_args
                 self.assertIn('body', kwargs)
@@ -95,8 +95,8 @@ class TestTagUpdate(unittest.TestCase):
             mock_sync.return_value = _mock_response()
             import binctl as bc
 
-            cli = _make_cli(_make_cli_args(name='renamed'))
-            bc._tag_update(cli, tag_id='1')
+            with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='renamed', tag_id='1'))):
+                bc._tag_update()
 
             _, kwargs = mock_sync.call_args
             self.assertIn('body', kwargs)
@@ -110,8 +110,8 @@ class TestNodeDetach(unittest.TestCase):
             mock_sync.return_value = _mock_response()
             import binctl as bc
 
-            cli = _make_cli(_make_cli_args(node_id='1', no_parent=True))
-            bc._node_update(cli, node_id='1')
+            with patch.object(bc, 'cli', _make_cli(_make_cli_args(node_id='1', no_parent=True))):
+                bc._node_update()
 
             _, kwargs = mock_sync.call_args
             body = kwargs['body']

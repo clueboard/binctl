@@ -5,6 +5,8 @@ PYTHON_ARGCOMPLETE_OK
 """
 
 import json
+import logging
+import sys
 
 from binctl_client import Client
 from binctl_client.api.nodes import (
@@ -26,7 +28,7 @@ from binctl_client.types import Response
 from milc import cli
 
 
-def _get_client(cli) -> Client:
+def _get_client() -> Client:
     """Construct an API client from config/args."""
     base_url = cli.config.general.base_url
     token = cli.config.general.token
@@ -35,8 +37,77 @@ def _get_client(cli) -> Client:
     return Client(base_url=base_url, username=cli.config.general.username, password=cli.config.general.password)
 
 
-def _echo_json(cli, data):
+def _echo_json(data):
     cli.echo(json.dumps(data, indent=4, sort_keys=True))
+
+
+_SPINNER_TEXT = {
+    ('node', 'list'):   'Fetching nodes...',
+    ('node', 'get'):    'Fetching node...',
+    ('node', 'create'): 'Creating node...',
+    ('node', 'update'): 'Updating node...',
+    ('node', 'delete'): 'Deleting node...',
+    ('tag',  'list'):   'Fetching tags...',
+    ('tag',  'get'):    'Fetching tag...',
+    ('tag',  'create'): 'Creating tag...',
+    ('tag',  'update'): 'Updating tag...',
+    ('tag',  'delete'): 'Deleting tag...',
+}
+
+
+def _format_node(action, result) -> str:
+    if action == 'list':
+        if not result:
+            return 'No nodes.'
+        lines = [f'{len(result)} node{"s" if len(result) != 1 else ""}:']
+        for n in result:
+            kind = 'container' if n.is_container else 'item'
+            lines.append(f'  {n.label} ({n.id}) [{kind}]')
+        return '\n'.join(lines)
+    if action == 'get':
+        kind = 'container' if result.is_container else 'item'
+        return f'"{result.label}" (id: {result.id}) [{kind}]'
+    if action == 'create':
+        return f'Created "{result.label}" with node id "{result.id}"'
+    if action == 'update':
+        return f'Updated "{result.label}" (id: {result.id})'
+    if action == 'delete':
+        return f'Deleted node "{cli.args.node_id}"'
+    return ''
+
+
+def _format_tag(action, result) -> str:
+    if action == 'list':
+        if not result:
+            return 'No tags.'
+        lines = [f'{len(result)} tag{"s" if len(result) != 1 else ""}:']
+        for t in result:
+            lines.append(f'  {t.name} ({t.id})')
+        return '\n'.join(lines)
+    if action == 'get':
+        return f'"{result.name}" (id: {result.id})'
+    if action == 'create':
+        return f'Created tag "{result.name}" (id: {result.id})'
+    if action == 'update':
+        return f'Updated tag "{result.name}" (id: {result.id})'
+    if action == 'delete':
+        return f'Deleted tag "{cli.args.tag_id}"'
+    return ''
+
+
+def _run_with_output(resource, action, fn, formatter):
+    if cli.args.output == 'json':
+        result = fn()
+        _echo_json([r.to_dict() for r in result] if isinstance(result, list) else result.to_dict())
+        return
+    sp = cli.spinner(_SPINNER_TEXT[(resource, action)], enabled=sys.stdout.isatty())
+    sp.start()
+    try:
+        result = fn()
+    except SystemExit:
+        sp.fail('Failed.')
+        raise
+    sp.succeed(formatter(action, result))
 
 
 def _check_response(response: Response, label: str):
@@ -68,9 +139,13 @@ def _check_response(response: Response, label: str):
     default=None,
     help='Password for login-based authentication. WARNING: visible in process listings (ps, top). Prefer --token for production use.',
 )
+@cli.argument('-o', '--output', choices=['text', 'json'], default='text', help='Output format: text (human-friendly) or json (raw JSON, no spinner)')
 @cli.entrypoint('binctl: manage storage nodes and tags.')
 def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
+    if not cli.args.verbose:
+        logging.getLogger('httpx').setLevel(logging.WARNING)
+        logging.getLogger('httpcore').setLevel(logging.WARNING)
     # If the user runs just `binctl`, print usage.
     cli.print_usage()
 
@@ -80,8 +155,8 @@ def main(cli):
 # ---------------------------------------------------------------------------
 
 
-def _node_list(cli):
-    client = _get_client(cli)
+def _node_list():
+    client = _get_client()
     items = []
     offset = 0
     limit = 100
@@ -93,19 +168,18 @@ def _node_list(cli):
         if len(items) >= response.parsed.total:
             break
         offset += limit
-    _echo_json(cli, [n.to_dict() for n in items])
+    return items
 
 
-def _node_get(cli, node_id: str):
-    client = _get_client(cli)
-    response = get_node_detail.sync_detailed(client=client, node_id=node_id)
-    _check_response(response, f'node {node_id}')
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+def _node_get():
+    client = _get_client()
+    response = get_node_detail.sync_detailed(client=client, node_id=cli.args.node_id)
+    _check_response(response, f'node {cli.args.node_id}')
+    return response.parsed
 
 
-def _node_create(cli):
-    client = _get_client(cli)
+def _node_create():
+    client = _get_client()
     is_container = False if cli.args.is_container is None else cli.args.is_container
     body = NodeCreate(
         label=cli.args.label,
@@ -114,27 +188,20 @@ def _node_create(cli):
         parent_id=cli.args.parent_id,
         tag_ids=cli.args.tag_id or [],
     )
-
     response = post_node_create.sync_detailed(client=client, body=body)
     _check_response(response, 'node create')
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+    return response.parsed
 
 
-def _delete_response(cli, response, label: str):
-    _check_response(response, label)
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+def _node_delete():
+    client = _get_client()
+    response = delete_node_endpoint.sync_detailed(client=client, node_id=cli.args.node_id)
+    _check_response(response, f'node {cli.args.node_id}')
+    return response.parsed
 
 
-def _node_delete(cli, node_id: str):
-    client = _get_client(cli)
-    response = delete_node_endpoint.sync_detailed(client=client, node_id=node_id)
-    _delete_response(cli, response, f'node {node_id}')
-
-
-def _node_update(cli, node_id: str):
-    client = _get_client(cli)
+def _node_update():
+    client = _get_client()
     # Build a partial update body. Unspecified fields are left as None.
     body_kwargs = {}
 
@@ -142,7 +209,7 @@ def _node_update(cli, node_id: str):
         body_kwargs['label'] = cli.args.label
     if cli.args.description is not None:
         body_kwargs['description'] = cli.args.description
-    if cli.args_passed['node']['is_container']:
+    if cli.args_passed['node']['is_container']:  # ty: ignore[unresolved-attribute]
         body_kwargs['is_container'] = cli.args.is_container
     if cli.args.parent_id is not None:
         body_kwargs['parent_id'] = cli.args.parent_id
@@ -153,10 +220,9 @@ def _node_update(cli, node_id: str):
 
     body = NodeUpdate(**body_kwargs)
 
-    response = patch_node_update.sync_detailed(client=client, node_id=node_id, body=body)
-    _check_response(response, f'node {node_id}')
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+    response = patch_node_update.sync_detailed(client=client, node_id=cli.args.node_id, body=body)
+    _check_response(response, f'node {cli.args.node_id}')
+    return response.parsed
 
 
 # ---------------------------------------------------------------------------
@@ -164,8 +230,8 @@ def _node_update(cli, node_id: str):
 # ---------------------------------------------------------------------------
 
 
-def _tag_list(cli):
-    client = _get_client(cli)
+def _tag_list():
+    client = _get_client()
     items = []
     offset = 0
     limit = 100
@@ -177,39 +243,37 @@ def _tag_list(cli):
         if len(items) >= response.parsed.total:
             break
         offset += limit
-    _echo_json(cli, [t.to_dict() for t in items])
+    return items
 
 
-def _tag_get(cli, tag_id: str):
-    client = _get_client(cli)
-    response = get_tag_detail.sync_detailed(client=client, tag_id=tag_id)
-    _check_response(response, f'tag {tag_id}')
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+def _tag_get():
+    client = _get_client()
+    response = get_tag_detail.sync_detailed(client=client, tag_id=cli.args.tag_id)
+    _check_response(response, f'tag {cli.args.tag_id}')
+    return response.parsed
 
 
-def _tag_create(cli):
-    client = _get_client(cli)
+def _tag_create():
+    client = _get_client()
     body = TagCreate(name=cli.args.name)
     response = post_tag_create.sync_detailed(client=client, body=body)
     _check_response(response, 'tag create')
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+    return response.parsed
 
 
-def _tag_delete(cli, tag_id: str):
-    client = _get_client(cli)
-    response = delete_tag_endpoint.sync_detailed(client=client, tag_id=tag_id)
-    _delete_response(cli, response, f'tag {tag_id}')
+def _tag_delete():
+    client = _get_client()
+    response = delete_tag_endpoint.sync_detailed(client=client, tag_id=cli.args.tag_id)
+    _check_response(response, f'tag {cli.args.tag_id}')
+    return response.parsed
 
 
-def _tag_update(cli, tag_id: str):
-    client = _get_client(cli)
+def _tag_update():
+    client = _get_client()
     body = TagUpdate(name=cli.args.name)
-    response = patch_tag_update.sync_detailed(client=client, tag_id=tag_id, body=body)
-    _check_response(response, f'tag {tag_id}')
-    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
-    _echo_json(cli, data)
+    response = patch_tag_update.sync_detailed(client=client, tag_id=cli.args.tag_id, body=body)
+    _check_response(response, f'tag {cli.args.tag_id}')
+    return response.parsed
 
 
 # ---------------------------------------------------------------------------
@@ -239,21 +303,21 @@ def node(cli):
     action = cli.args.action
 
     if action == 'list':
-        _node_list(cli)
+        _run_with_output('node', 'list', _node_list, _format_node)
         return
 
     if action == 'get':
         if cli.args.node_id is None:
             cli.log.error('node get requires --node-id')
             raise SystemExit(1)
-        _node_get(cli, cli.args.node_id)
+        _run_with_output('node', 'get', _node_get, _format_node)
         return
 
     if action == 'create':
         if not cli.args.label:
             cli.log.error('node create requires --label')
             raise SystemExit(1)
-        _node_create(cli)
+        _run_with_output('node', 'create', _node_create, _format_node)
         return
 
     if action == 'update':
@@ -271,14 +335,14 @@ def node(cli):
         ) and not cli.args_passed['node']['is_container']:
             cli.log.error('node update needs at least one field to change')
             raise SystemExit(1)
-        _node_update(cli, cli.args.node_id)
+        _run_with_output('node', 'update', _node_update, _format_node)
         return
 
     if action == 'delete':
         if cli.args.node_id is None:
             cli.log.error('node delete requires --node-id')
             raise SystemExit(1)
-        _node_delete(cli, cli.args.node_id)
+        _run_with_output('node', 'delete', _node_delete, _format_node)
         return
 
     cli.log.error(f'Unknown node action: {action}')
@@ -303,21 +367,21 @@ def tag(cli):
     action = cli.args.action
 
     if action == 'list':
-        _tag_list(cli)
+        _run_with_output('tag', 'list', _tag_list, _format_tag)
         return
 
     if action == 'get':
         if cli.args.tag_id is None:
             cli.log.error('tag get requires --tag-id')
             raise SystemExit(1)
-        _tag_get(cli, cli.args.tag_id)
+        _run_with_output('tag', 'get', _tag_get, _format_tag)
         return
 
     if action == 'create':
         if not cli.args.name:
             cli.log.error('tag create requires --name')
             raise SystemExit(1)
-        _tag_create(cli)
+        _run_with_output('tag', 'create', _tag_create, _format_tag)
         return
 
     if action == 'update':
@@ -327,14 +391,14 @@ def tag(cli):
         if not cli.args.name:
             cli.log.error('tag update requires --name')
             raise SystemExit(1)
-        _tag_update(cli, cli.args.tag_id)
+        _run_with_output('tag', 'update', _tag_update, _format_tag)
         return
 
     if action == 'delete':
         if cli.args.tag_id is None:
             cli.log.error('tag delete requires --tag-id')
             raise SystemExit(1)
-        _tag_delete(cli, cli.args.tag_id)
+        _run_with_output('tag', 'delete', _tag_delete, _format_tag)
         return
 
     cli.log.error(f'Unknown tag action: {action}')
