@@ -30,10 +30,15 @@ It's backed by a Flask API with a CLI frontend.
    ```
    uvicorn web:create_app --factory
    ```
-5. Create a user and token:
-   ```
-   python manage.py create-user --username alice
-   ```
+5. Create a user:
+   - With a password:
+     ```
+     python manage.py create-user --username alice --password <password>
+     ```
+   - With a non-expiring API token (no password):
+     ```
+     python manage.py create-user --username alice --token
+     ```
    Then pass `--token <token>` (or `--username`/`--password`) to `binctl` commands.
 
 ## CLI
@@ -44,10 +49,12 @@ It's backed by a Flask API with a CLI frontend.
 `manage.py` subcommands (server-side user/token management):
 
 - `python manage.py init-db` - initialize the database schema
-- `python manage.py create-user` - create a user
+- `python manage.py create-user --username <u> --password <p>` - create a user with a password
+- `python manage.py create-user --username <u> --token` - create a passwordless user and emit a non-expiring token
+- `python manage.py set-password <username>` - interactively set a new password for a user
 - `python manage.py list-users` - list users
-- `python manage.py list-tokens` - list tokens for a user
-- `python manage.py revoke-tokens` - revoke all tokens for a user
+- `python manage.py list-tokens <username>` - list tokens for a user
+- `python manage.py revoke-tokens <username>` - revoke all tokens for a user
 
 ## Security
 
@@ -60,7 +67,7 @@ It's backed by a Flask API with a CLI frontend.
 
 **Token security** — tokens created via the login API (web/browser sessions) expire after 30 days by default; set `SESSION_LIFETIME_DAYS` to override. Tokens created via `python manage.py create-user` do not expire by default. All tokens should be treated with the same secrecy as a password: store them safely, do not share them, and revoke compromised tokens promptly with `python manage.py revoke-tokens`.
 
-**Password policy** — the application does not enforce any minimum password strength. Choose a strong password of at least 16 characters using a mix of uppercase letters, lowercase letters, digits, and symbols.
+**Password policy** — `set-password` enforces a minimum of 6 characters. No other complexity requirements are enforced by the application. Choose a strong password of at least 16 characters using a mix of uppercase letters, lowercase letters, digits, and symbols.
 
 ## Tests / CI
 
