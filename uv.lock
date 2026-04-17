@@ -105,7 +105,7 @@ requires-dist = [
     { name = "binctl-client", editable = "binctl-client" },
     { name = "connexion", extras = ["flask"], specifier = ">=3.3" },
     { name = "gunicorn", specifier = ">=21.0" },
-    { name = "milc" },
+    { name = "milc", editable = "milc-src" },
     { name = "psycopg2-binary", marker = "extra == 'postgresql'" },
     { name = "pymysql", marker = "extra == 'mysql'" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
@@ -612,7 +612,7 @@ wheels = [
 [[package]]
 name = "milc"
 version = "1.9.1"
-source = { registry = "https://pypi.org/simple" }
+source = { editable = "milc-src" }
 dependencies = [
     { name = "argcomplete" },
     { name = "colorama" },
@@ -621,9 +621,15 @@ dependencies = [
     { name = "spinners" },
     { name = "types-colorama" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/85/36cf4fd4cbcc25c6ee238056342decb800b6928080fe20b35d87f4c498ad/milc-1.9.1.tar.gz", hash = "sha256:d89c9fa85984adca2e49b8f4a3a77bd649df6553c92583be38f55e9a9343a65e", size = 28431, upload-time = "2025-01-25T08:28:16.469Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/5f/96d389019531d1c2c7533e8b18ee7cb38c93a916ad818289f2f0e7874d0b/milc-1.9.1-py2.py3-none-any.whl", hash = "sha256:06013131bc9f0503a2b229345203c7d2d4aa9f2daf14ddaaf2d4fb5bebd78647", size = 29213, upload-time = "2025-01-25T08:28:14.729Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "argcomplete" },
+    { name = "colorama" },
+    { name = "halo" },
+    { name = "platformdirs" },
+    { name = "spinners" },
+    { name = "types-colorama" },
 ]
 
 [[package]]

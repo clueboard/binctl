@@ -38,9 +38,11 @@ dev = [
 
 [tool.uv.sources]
 binctl-client = { path = "binctl-client", editable = true }
+milc = { path = "milc-src", editable = true }
 
 [tool.ruff]
 line-length = 160
+exclude = ["milc-src/"]
 
 [tool.ruff.format]
 quote-style = "single"
@@ -56,4 +58,7 @@ combine-as-imports = true
 testpaths = [".", "tests"]
 python_files = ["test_*.py"]
 addopts = "-v"
+
+[tool.ty.src]
+exclude = ["milc-src/"]
 
