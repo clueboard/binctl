@@ -9,6 +9,7 @@ from db.flask import (
     create_node,
     create_tag,
     delete_node,
+    delete_tag,
     fetch_children,
     fetch_node,
     fetch_nodes_for_tag,
@@ -91,6 +92,17 @@ def post_tag_create() -> Response:
     resp = jsonify(tag_row_to_dict(tag))
     resp.status_code = 201
     return resp
+
+
+def delete_tag_endpoint(tag_id: int) -> Response:
+    delete_op = delete_tag(tag_id)
+
+    if delete_op is None:
+        return error(404, 'Tag not found')
+
+    total, node_count = delete_op
+
+    return jsonify({'deleted': {'total': total, 'associations': node_count}})
 
 
 def patch_tag_update(tag_id: int) -> Response:

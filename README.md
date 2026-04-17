@@ -34,11 +34,8 @@ It's backed by a Flask API with a CLI frontend.
 
 ## CLI
 
-- `binctl node list|get|create|update` - manage nodes
-- `binctl tag list|get|create|update`  - manage tags
-
-> **Note:** The API does not yet support DELETE. Nodes and tags can be created
-> and updated but not removed via the API.
+- `binctl node list|get|create|update|delete` - manage nodes
+- `binctl tag list|get|create|update|delete`  - manage tags
 
 `manage.py` subcommands (server-side user/token management):
 

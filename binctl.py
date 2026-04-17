@@ -8,12 +8,14 @@ import json
 
 from binctl_client import Client
 from binctl_client.api.nodes import (
+    delete_node_endpoint,
     get_node_detail,
     get_nodes_list,
     patch_node_update,
     post_node_create,
 )
 from binctl_client.api.tags import (
+    delete_tag_endpoint,
     get_tag_detail,
     get_tags_list,
     patch_tag_update,
@@ -119,6 +121,18 @@ def _node_create(cli):
     _echo_json(cli, data)
 
 
+def _delete_response(cli, response, label: str):
+    _check_response(response, label)
+    data = response.parsed.to_dict() if hasattr(response.parsed, 'to_dict') else response.parsed
+    _echo_json(cli, data)
+
+
+def _node_delete(cli, node_id: int):
+    client = _get_client(cli)
+    response = delete_node_endpoint.sync_detailed(client=client, node_id=node_id)
+    _delete_response(cli, response, f'node {node_id}')
+
+
 def _node_update(cli, node_id: int):
     client = _get_client(cli)
     # Build a partial update body. Unspecified fields are left as None.
@@ -184,6 +198,12 @@ def _tag_create(cli):
     _echo_json(cli, data)
 
 
+def _tag_delete(cli, tag_id: int):
+    client = _get_client(cli)
+    response = delete_tag_endpoint.sync_detailed(client=client, tag_id=tag_id)
+    _delete_response(cli, response, f'tag {tag_id}')
+
+
 def _tag_update(cli, tag_id: int):
     client = _get_client(cli)
     body = TagUpdate(name=cli.args.name)
@@ -200,10 +220,10 @@ def _tag_update(cli, tag_id: int):
 
 @cli.argument(
     'action',
-    choices=['list', 'get', 'create', 'update'],
-    help='Node action to perform: list|get|create|update',
+    choices=['list', 'get', 'create', 'update', 'delete'],
+    help='Node action to perform: list|get|create|update|delete',
 )
-@cli.argument('--node-id', type=int, help='Node ID (required for get/update)')
+@cli.argument('--node-id', type=int, help='Node ID (required for get/update/delete)')
 @cli.argument('--label', help='Label for create/update')
 @cli.argument('--description', help='Description for create/update', default=None)
 @cli.argument(
@@ -214,7 +234,7 @@ def _tag_update(cli, tag_id: int):
 @cli.argument('--parent-id', type=int, default=None, help='Parent node ID')
 @cli.argument('--no-parent', action='store_true', default=False, help='Detach node from its parent')
 @cli.argument('--tag-id', type=int, nargs='*', help='Tag IDs to attach/replace')
-@cli.subcommand('Node operations: list, get, create, update.')
+@cli.subcommand('Node operations: list, get, create, update, delete.')
 def node(cli):
     """binctl node <action> [options]"""
     action = cli.args.action
@@ -256,6 +276,13 @@ def node(cli):
         _node_update(cli, cli.args.node_id)
         return
 
+    if action == 'delete':
+        if cli.args.node_id is None:
+            cli.log.error('node delete requires --node-id')
+            raise SystemExit(1)
+        _node_delete(cli, cli.args.node_id)
+        return
+
     cli.log.error(f'Unknown node action: {action}')
     raise SystemExit(1)
 
@@ -267,12 +294,12 @@ def node(cli):
 
 @cli.argument(
     'action',
-    choices=['list', 'get', 'create', 'update'],
-    help='Tag action to perform: list|get|create|update',
+    choices=['list', 'get', 'create', 'update', 'delete'],
+    help='Tag action to perform: list|get|create|update|delete',
 )
-@cli.argument('--tag-id', type=int, help='Tag ID (required for get/update)')
+@cli.argument('--tag-id', type=int, help='Tag ID (required for get/update/delete)')
 @cli.argument('--name', help='Tag name for create/update')
-@cli.subcommand('Tag operations: list, get, create, update.')
+@cli.subcommand('Tag operations: list, get, create, update, delete.')
 def tag(cli):
     """binctl tag <action> [options]"""
     action = cli.args.action
@@ -303,6 +330,13 @@ def tag(cli):
             cli.log.error('tag update requires --name')
             raise SystemExit(1)
         _tag_update(cli, cli.args.tag_id)
+        return
+
+    if action == 'delete':
+        if cli.args.tag_id is None:
+            cli.log.error('tag delete requires --tag-id')
+            raise SystemExit(1)
+        _tag_delete(cli, cli.args.tag_id)
         return
 
     cli.log.error(f'Unknown tag action: {action}')

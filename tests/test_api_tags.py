@@ -98,6 +98,45 @@ class TestTagPatch:
         assert resp.status_code == 404
 
 
+class TestTagDeleteUnauthenticated:
+    def test_delete_requires_auth(self, client):
+        resp = client.delete('/v1/tags/1')
+        assert resp.status_code == 401
+
+
+class TestTagDelete:
+    def test_delete_success(self, client, make_tag, make_node, authed_headers):
+        tag_id = make_tag('disposable')
+        node_id = make_node('item', tag_ids=[tag_id])
+
+        resp = client.delete(f'/v1/tags/{tag_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['deleted']['total'] == 2  # 1 tag + 1 association
+        assert body['deleted']['associations'] == 1
+
+        # Tag is gone
+        resp = client.get(f'/v1/tags/{tag_id}', headers=authed_headers)
+        assert resp.status_code == 404
+
+        # Node still exists, tag association removed
+        resp = client.get(f'/v1/nodes/{node_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['tags'] == []
+
+    def test_delete_tag_no_associations(self, client, make_tag, authed_headers):
+        tag_id = make_tag('unused')
+        resp = client.delete(f'/v1/tags/{tag_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body['deleted']['total'] == 1
+        assert body['deleted']['associations'] == 0
+
+    def test_delete_not_found(self, client, authed_headers):
+        resp = client.delete('/v1/tags/99999', headers=authed_headers)
+        assert resp.status_code == 404
+
+
 def test_count_tags_returns_int(app):
     with app.app.app_context():
         from db.flask import count_tags

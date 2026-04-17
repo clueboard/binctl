@@ -7,48 +7,30 @@ from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 if TYPE_CHECKING:
-    from ..models.node_child import NodeChild
+    from ..models.delete_node_endpoint_response_200_deleted import DeleteNodeEndpointResponse200Deleted
 
 
-T = TypeVar("T", bound="NodePage")
+T = TypeVar("T", bound="DeleteNodeEndpointResponse200")
 
 
 @_attrs_define
-class NodePage:
+class DeleteNodeEndpointResponse200:
     """
     Attributes:
-        total (int):
-        limit (int):
-        offset (int):
-        items (list[NodeChild]):
+        deleted (DeleteNodeEndpointResponse200Deleted):
     """
 
-    total: int
-    limit: int
-    offset: int
-    items: list[NodeChild]
+    deleted: DeleteNodeEndpointResponse200Deleted
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        total = self.total
-
-        limit = self.limit
-
-        offset = self.offset
-
-        items = []
-        for items_item_data in self.items:
-            items_item = items_item_data.to_dict()
-            items.append(items_item)
+        deleted = self.deleted.to_dict()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
             {
-                "total": total,
-                "limit": limit,
-                "offset": offset,
-                "items": items,
+                "deleted": deleted,
             }
         )
 
@@ -56,31 +38,17 @@ class NodePage:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: Mapping[str, Any]) -> T:
-        from ..models.node_child import NodeChild
+        from ..models.delete_node_endpoint_response_200_deleted import DeleteNodeEndpointResponse200Deleted
 
         d = dict(src_dict)
-        total = d.pop("total")
+        deleted = DeleteNodeEndpointResponse200Deleted.from_dict(d.pop("deleted"))
 
-        limit = d.pop("limit")
-
-        offset = d.pop("offset")
-
-        items = []
-        _items = d.pop("items")
-        for items_item_data in _items:
-            items_item = NodeChild.from_dict(items_item_data)
-
-            items.append(items_item)
-
-        node_page = cls(
-            total=total,
-            limit=limit,
-            offset=offset,
-            items=items,
+        delete_node_endpoint_response_200 = cls(
+            deleted=deleted,
         )
 
-        node_page.additional_properties = d
-        return node_page
+        delete_node_endpoint_response_200.additional_properties = d
+        return delete_node_endpoint_response_200
 
     @property
     def additional_keys(self) -> list[str]:

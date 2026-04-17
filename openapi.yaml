@@ -102,13 +102,6 @@ paths:
       operationId: delete_node_endpoint
       tags: [nodes]
       summary: Delete a node
-      parameters:
-        - in: path
-          name: node_id
-          required: true
-          schema:
-            type: integer
-            format: int64
       responses:
         "200":
           description: Node deleted
@@ -225,6 +218,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Tag"
+        "404":
+          description: Tag not found
+    delete:
+      x-openapi-router-controller: routes
+      operationId: delete_tag_endpoint
+      tags: [tags]
+      summary: Delete a tag
+      responses:
+        "200":
+          description: Tag deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - deleted
+                properties:
+                  deleted:
+                    type: object
+                    required:
+                      - total
+                      - associations
+                    properties:
+                      total:
+                        type: integer
+                      associations:
+                        type: integer
         "404":
           description: Tag not found
 

@@ -100,6 +100,12 @@ class TestNodeList:
         assert body['total'] == len(body['items'])
 
 
+class TestNodeDeleteUnauthenticated:
+    def test_delete_requires_auth(self, client):
+        resp = client.delete('/v1/nodes/1')
+        assert resp.status_code == 401
+
+
 class TestNodeDelete:
     def test_delete_success(self, client, make_node, make_tag, authed_headers):
         container_id = make_node('container', is_container=True)

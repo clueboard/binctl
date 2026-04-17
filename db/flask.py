@@ -337,36 +337,42 @@ def update_node(
     return True
 
 
+class _NotFound(Exception):
+    pass
+
+
 def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
     """Deletes a node and its associated edges and tag associations."""
-    with transactional() as conn:
-        if not fetch_node(node_id):
-            return None
+    try:
+        with transactional() as conn:
+            edge_count = 0
+            object_count = 0
 
-        edge_count = 0
-        object_count = 0
+            result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
+            object_count += result.rowcount
+            edge_count += result.rowcount
+            logger.debug('Deleted %d edges where %s is the parent.', result.rowcount, node_id)
 
-        result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
-        object_count += result.rowcount
-        edge_count += result.rowcount
-        logger.debug('Deleted %d edges where %s is the parent.', result.rowcount, node_id)
+            result = conn.execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': node_id})
+            object_count += result.rowcount
+            edge_count += result.rowcount
+            logger.debug('Deleted %d edges where %s is the child.', result.rowcount, node_id)
 
-        result = conn.execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': node_id})
-        object_count += result.rowcount
-        edge_count += result.rowcount
-        logger.debug('Deleted %d edges where %s is the child.', result.rowcount, node_id)
+            # Delete tag associations
+            result = conn.execute(text('DELETE FROM tag_node WHERE node_id = :node_id'), {'node_id': node_id})
+            object_count += result.rowcount
+            tag_count = result.rowcount
+            logger.debug('Deleted %d tags associated with %s.', result.rowcount, node_id)
 
-        # Delete tag associations
-        result = conn.execute(text('DELETE FROM tag_node WHERE node_id = :node_id'), {'node_id': node_id})
-        object_count += result.rowcount
-        tag_count = result.rowcount
-        logger.debug('Deleted %d tags associated with %s.', result.rowcount, node_id)
+            # Delete the node itself
+            result = conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': node_id})
+            if result.rowcount == 0:
+                raise _NotFound
+            object_count += result.rowcount
 
-        # Delete the node itself
-        result = conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': node_id})
-        object_count += result.rowcount
-
-        return object_count, edge_count, tag_count, result.rowcount
+            return object_count, edge_count, tag_count, result.rowcount
+    except _NotFound:
+        return None
 
 
 # --------------------------------------------------------------------
@@ -450,6 +456,25 @@ def update_tag(tag_id: int, name: str) -> int:
     except IntegrityError:
         raise ValueError(f"Tag with name '{name}' already exists")
     return result.rowcount
+
+
+def delete_tag(tag_id: int) -> tuple[int, int] | None:
+    """Deletes a tag and its node associations. Returns (total, node_count) or None if not found."""
+    try:
+        with transactional() as conn:
+            result = conn.execute(text('DELETE FROM tag_node WHERE tag_id = :tag_id'), {'tag_id': tag_id})
+            node_count = result.rowcount
+            logger.debug('Deleted %d node associations for tag %d.', node_count, tag_id)
+
+            result = conn.execute(text('DELETE FROM tags WHERE id = :id'), {'id': tag_id})
+            if result.rowcount == 0:
+                raise _NotFound
+            tag_count = result.rowcount
+            logger.debug('Deleted tag %d.', tag_id)
+
+            return node_count + tag_count, node_count
+    except _NotFound:
+        return None
 
 
 # --------------------------------------------------------------------
