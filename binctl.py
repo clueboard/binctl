@@ -42,16 +42,16 @@ def _echo_json(data):
 
 
 _SPINNER_TEXT = {
-    ('node', 'list'):   'Fetching nodes...',
-    ('node', 'get'):    'Fetching node...',
+    ('node', 'list'): 'Fetching nodes...',
+    ('node', 'get'): 'Fetching node...',
     ('node', 'create'): 'Creating node...',
     ('node', 'update'): 'Updating node...',
     ('node', 'delete'): 'Deleting node...',
-    ('tag',  'list'):   'Fetching tags...',
-    ('tag',  'get'):    'Fetching tag...',
-    ('tag',  'create'): 'Creating tag...',
-    ('tag',  'update'): 'Updating tag...',
-    ('tag',  'delete'): 'Deleting tag...',
+    ('tag', 'list'): 'Fetching tags...',
+    ('tag', 'get'): 'Fetching tag...',
+    ('tag', 'create'): 'Creating tag...',
+    ('tag', 'update'): 'Updating tag...',
+    ('tag', 'delete'): 'Deleting tag...',
 }
 
 
@@ -100,14 +100,14 @@ def _run_with_output(resource, action, fn, formatter):
         result = fn()
         _echo_json([r.to_dict() for r in result] if isinstance(result, list) else result.to_dict())
         return
-    sp = cli.spinner(_SPINNER_TEXT[(resource, action)], enabled=sys.stdout.isatty())
+    sp = cli.spinner(_SPINNER_TEXT[(resource, action)])
     sp.start()
     try:
         result = fn()
-    except SystemExit:
-        sp.fail('Failed.')
+        sp.succeed(formatter(action, result))
+    except Exception as e:
+        sp.fail(f'Failed: {e.__class__.__name__}: {e}')
         raise
-    sp.succeed(formatter(action, result))
 
 
 def _check_response(response: Response, label: str):
@@ -141,11 +141,8 @@ def _check_response(response: Response, label: str):
 )
 @cli.argument('-o', '--output', choices=['text', 'json'], default='text', help='Output format: text (human-friendly) or json (raw JSON, no spinner)')
 @cli.entrypoint('binctl: manage storage nodes and tags.')
-def main(cli):
+def entrypoint(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
-    if not cli.args.verbose:
-        logging.getLogger('httpx').setLevel(logging.WARNING)
-        logging.getLogger('httpcore').setLevel(logging.WARNING)
     # If the user runs just `binctl`, print usage.
     cli.print_usage()
 
@@ -209,7 +206,7 @@ def _node_update():
         body_kwargs['label'] = cli.args.label
     if cli.args.description is not None:
         body_kwargs['description'] = cli.args.description
-    if cli.args_passed['node']['is_container']:  # ty: ignore[unresolved-attribute]
+    if cli.args_passed['node']['is_container']:
         body_kwargs['is_container'] = cli.args.is_container
     if cli.args.parent_id is not None:
         body_kwargs['parent_id'] = cli.args.parent_id
@@ -324,15 +321,19 @@ def node(cli):
         if cli.args.node_id is None:
             cli.log.error('node update requires --node-id')
             raise SystemExit(1)
-        if not cli.args.no_parent and all(
-            value is None
-            for value in (
-                cli.args.label,
-                cli.args.description,
-                cli.args.parent_id,
-                cli.args.tag_id,
+        if (
+            not cli.args.no_parent
+            and all(
+                value is None
+                for value in (
+                    cli.args.label,
+                    cli.args.description,
+                    cli.args.parent_id,
+                    cli.args.tag_id,
+                )
             )
-        ) and not cli.args_passed['node']['is_container']:
+            and not cli.args_passed['node']['is_container']
+        ):
             cli.log.error('node update needs at least one field to change')
             raise SystemExit(1)
         _run_with_output('node', 'update', _node_update, _format_node)
@@ -405,5 +406,13 @@ def tag(cli):
     raise SystemExit(1)
 
 
-if __name__ == '__main__':
+def main():
+    """Handle setup before turning over to the CLI."""
+    if not cli.args_passed['general']['verbose']:
+        logging.getLogger('httpx').setLevel(logging.WARNING)
+        logging.getLogger('httpcore').setLevel(logging.WARNING)
     cli()
+
+
+if __name__ == '__main__':
+    main()
