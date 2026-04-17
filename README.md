@@ -110,29 +110,32 @@ Key flags for `binctl`:
 
 This walks through creating a hierarchy (room → shelf → item), listing it, and moving a node.
 
+Node IDs are opaque strings (e.g. `wGIDjZ0AAC`), not sequential integers. Copy them from the
+output of each command — do not guess or construct them by hand.
+
 ```bash
 export TOKEN=<your token>
 
 # Create a room (a container)
 binctl --token $TOKEN node create --label "Garage" --is-container
-# → {"id": 1, "label": "Garage", "is_container": true, ...}
+# → {"id": "wGIDjZ0AAC", "label": "Garage", "is_container": true, ...}
 
-# Create a shelf inside the room
-binctl --token $TOKEN node create --label "Shelf A" --is-container --parent-id 1
-# → {"id": 2, "label": "Shelf A", ...}
+# Create a shelf inside the room — use the id from the previous output
+binctl --token $TOKEN node create --label "Shelf A" --is-container --parent-id wGIDjZ0AAC
+# → {"id": "xK3mPq1BBD", "label": "Shelf A", ...}
 
 # Add an item to the shelf
-binctl --token $TOKEN node create --label "Power drill" --parent-id 2
-# → {"id": 3, "label": "Power drill", ...}
+binctl --token $TOKEN node create --label "Power drill" --parent-id xK3mPq1BBD
+# → {"id": "yR7nTs2CCE", "label": "Power drill", ...}
 
 # List everything
 binctl --token $TOKEN node list
 
-# Move the drill to a different shelf (say id=4)
-binctl --token $TOKEN node update --node-id 3 --parent-id 4
+# Move the drill to a different shelf (use that shelf's id from its create output)
+binctl --token $TOKEN node update --node-id yR7nTs2CCE --parent-id <other-shelf-id>
 
 # Detach the drill entirely (no parent, becomes a root node)
-binctl --token $TOKEN node update --node-id 3 --no-parent
+binctl --token $TOKEN node update --node-id yR7nTs2CCE --no-parent
 ```
 
 ## Security
