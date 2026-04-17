@@ -9,35 +9,73 @@ Instead of thinking in terms of "SKUs" and "stock levels", `binctl` models your 
 
 It's backed by a Flask API with a CLI frontend.
 
+## Quickstart (SQLite, local dev)
+
+The fastest path to a running system. Run each block in your terminal:
+
+```bash
+# 1. Install uv (skip if already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 2. Install all dependencies — binctl-client is a bundled workspace package
+cd binctl
+uv sync
+
+# 3. Initialize the database
+export DATABASE_URL=sqlite:///binctl.db
+uv run python manage.py init-db
+
+# 4. Create a user and get a token
+uv run python manage.py create-user --username alice --token
+# → prints something like: token: abc123...
+export TOKEN=<paste token here>
+
+# 5. Start the server (keep this terminal open, or run it in the background)
+uv run uvicorn web:create_app --factory
+
+# 6. In another terminal, verify it works
+binctl --token $TOKEN node list
+```
+
 ## Setup
 
-1. Copy `.env.example` and fill in your database URL:
+1. Install dependencies with `uv sync` — this installs `binctl`, `binctl-client` (a local workspace
+   package), and all other requirements in one step. `uv` must be installed first (see Quickstart
+   above).
+
+   If you need MySQL or PostgreSQL support, install the optional driver afterward:
+   - **MySQL:** `uv pip install 'binctl[mysql]'`  or  `pip install pymysql`
+   - **PostgreSQL:** `uv pip install 'binctl[postgresql]'`  or  `pip install psycopg2-binary`
+   - **SQLite** — no extra driver needed, skip this step.
+
+2. Copy `.env.example` and set your database URL:
    ```
    cp .env.example .env
    ```
-2. Install the optional driver for your database (SQLite needs none — it's built into Python):
-   - **MySQL:** `pip install 'binctl[mysql]'`
-   - **PostgreSQL:** `pip install 'binctl[postgresql]'`
-3. Set `DATABASE_URL` and initialize the database:
+   Supported URL formats:
+   - SQLite: `sqlite:///binctl.db`
+   - MySQL: `mysql+pymysql://user:password@localhost/binctl`
+   - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
+
+3. Initialize the database:
    ```
    export DATABASE_URL=sqlite:///binctl.db
    python manage.py init-db
    ```
-   Other supported URL formats:
-   - MySQL: `mysql+pymysql://user:password@localhost/binctl`
-   - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
+
 4. Start the server:
    ```
    uvicorn web:create_app --factory
    ```
+
 5. Create a user:
-   - With a password:
-     ```
-     python manage.py create-user --username alice --password <password>
-     ```
-   - With a non-expiring API token (no password):
+   - With a non-expiring API token (recommended for scripts):
      ```
      python manage.py create-user --username alice --token
+     ```
+   - With a password (for browser/interactive use):
+     ```
+     python manage.py create-user --username alice --password <password>
      ```
    Then pass `--token <token>` (or `--username`/`--password`) to `binctl` commands.
 
@@ -45,6 +83,14 @@ It's backed by a Flask API with a CLI frontend.
 
 - `binctl node list|get|create|update|delete` - manage nodes
 - `binctl tag list|get|create|update|delete`  - manage tags
+
+Key flags for `binctl`:
+
+| Flag | Description |
+|---|---|
+| `--base-url` | API server URL (default: `http://localhost:5000`) |
+| `--token` | Bearer token (preferred) |
+| `--username` / `--password` | Login-based auth |
 
 `manage.py` subcommands (server-side user/token management):
 
@@ -55,6 +101,35 @@ It's backed by a Flask API with a CLI frontend.
 - `python manage.py list-users` - list users
 - `python manage.py list-tokens <username>` - list tokens for a user
 - `python manage.py revoke-tokens <username>` - revoke all tokens for a user
+
+## Example: Building an inventory
+
+This walks through creating a hierarchy (room → shelf → item), listing it, and moving a node.
+
+```bash
+export TOKEN=<your token>
+
+# Create a room (a container)
+binctl --token $TOKEN node create --label "Garage" --is-container
+# → {"id": 1, "label": "Garage", "is_container": true, ...}
+
+# Create a shelf inside the room
+binctl --token $TOKEN node create --label "Shelf A" --is-container --parent-id 1
+# → {"id": 2, "label": "Shelf A", ...}
+
+# Add an item to the shelf
+binctl --token $TOKEN node create --label "Power drill" --parent-id 2
+# → {"id": 3, "label": "Power drill", ...}
+
+# List everything
+binctl --token $TOKEN node list
+
+# Move the drill to a different shelf (say id=4)
+binctl --token $TOKEN node update --node-id 3 --parent-id 4
+
+# Detach the drill entirely (no parent, becomes a root node)
+binctl --token $TOKEN node update --node-id 3 --no-parent
+```
 
 ## Security
 
@@ -117,3 +192,28 @@ This gives you a **forest of trees**:
 Tags are stored in `tags` + `tag_node` for future filtering and categorization.
 
 Tags are exposed via `binctl tag list|get|create|update`.
+
+## Troubleshooting
+
+**`uv: command not found`**
+Install uv first: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+**`ModuleNotFoundError: No module named 'binctl_client'`**
+Run `uv sync` from the repo root. `binctl-client` is a local workspace package — it is not on PyPI
+and won't be found by a plain `pip install binctl`.
+
+**`Connection refused` / `Failed to connect` when running `binctl` commands**
+The server is not running. Start it with `uv run uvicorn web:create_app --factory` (binds to
+`http://localhost:5000` by default). If you changed the port, pass `--base-url http://localhost:<port>`
+to `binctl`.
+
+**`401 Unauthorized`**
+Token is missing or wrong. Re-create one with `python manage.py create-user --username alice --token`,
+or list existing tokens with `python manage.py list-tokens alice`.
+
+**`DATABASE_URL not set` or database errors on startup**
+Export the variable before running server or manage commands:
+```
+export DATABASE_URL=sqlite:///binctl.db
+```
+Or add it to your `.env` file (copied from `.env.example`).
