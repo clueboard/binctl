@@ -142,8 +142,7 @@ def _node_update(cli, node_id: str):
         body_kwargs['label'] = cli.args.label
     if cli.args.description is not None:
         body_kwargs['description'] = cli.args.description
-    # is_container via store_boolean gives True/False/None
-    if cli.args.is_container is not None:
+    if cli.args_passed['node']['is_container']:
         body_kwargs['is_container'] = cli.args.is_container
     if cli.args.parent_id is not None:
         body_kwargs['parent_id'] = cli.args.parent_id
@@ -266,11 +265,10 @@ def node(cli):
             for value in (
                 cli.args.label,
                 cli.args.description,
-                cli.args.is_container,
                 cli.args.parent_id,
                 cli.args.tag_id,
             )
-        ):
+        ) and not cli.args_passed['node']['is_container']:
             cli.log.error('node update needs at least one field to change')
             raise SystemExit(1)
         _node_update(cli, cli.args.node_id)
