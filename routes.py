@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def _decode_id(raw: str, name: str) -> int:
     try:
         return base62.decode(raw)
-    except ValueError:
+    except (TypeError, ValueError):
         raise BadRequest(f'invalid {name}: {raw!r}')
 
 
