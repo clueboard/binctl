@@ -49,12 +49,13 @@ def fetch_token_and_touch(token: str) -> dict | None:
     }
 
 
-def create_user(username: str, password: str) -> int:
+def create_user(username: str, password: str | None) -> int:
     user_id = new_id()
+    password_hash = hash_password(password) if password is not None else '!'
     with db.engine.connect() as conn:
         conn.execute(
             text('INSERT INTO users (id, username, password_hash) VALUES (:id, :u, :h)'),
-            {'id': user_id, 'u': username, 'h': hash_password(password)},
+            {'id': user_id, 'u': username, 'h': password_hash},
         )
         conn.commit()
     return user_id

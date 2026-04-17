@@ -73,50 +73,54 @@ class TestRevokeTokens:
 
 class TestCreateUser:
     def test_success(self):
-        mock_cli = _mock_cli()
-        with (
-            patch('builtins.input', return_value='newuser'),
-            patch('getpass.getpass', return_value='secret'),
-            patch.object(manage.db.direct, 'create_user', return_value=42),
-        ):
+        mock_cli = _mock_cli(username='newuser', password='secret', token=False)
+        with patch.object(manage.db.direct, 'create_user', return_value=42):
             manage.create_user(mock_cli)
         output = mock_cli.log.info.call_args[0][0]
         assert 'newuser' in output
 
     def test_empty_username(self):
-        mock_cli = _mock_cli()
-        with patch('builtins.input', return_value=''):
-            with pytest.raises(SystemExit) as exc_info:
-                manage.create_user(mock_cli)
+        mock_cli = _mock_cli(username='', password='secret', token=False)
+        with pytest.raises(SystemExit) as exc_info:
+            manage.create_user(mock_cli)
         assert exc_info.value.code == 1
-
-    def test_password_mismatch(self):
-        mock_cli = _mock_cli()
-        with patch('builtins.input', return_value='alice'), patch('getpass.getpass', side_effect=['pass1', 'pass2']):
-            with pytest.raises(SystemExit) as exc_info:
-                manage.create_user(mock_cli)
-        assert exc_info.value.code == 1
-        error_msg = mock_cli.log.error.call_args[0][0]
-        assert 'match' in error_msg
 
     def test_short_password_warns(self):
-        mock_cli = _mock_cli()
-        with (
-            patch('builtins.input', return_value='alice'),
-            patch('getpass.getpass', return_value='abc'),
-            patch.object(manage.db.direct, 'create_user', return_value=42),
-        ):
+        mock_cli = _mock_cli(username='alice', password='abc', token=False)
+        with patch.object(manage.db.direct, 'create_user', return_value=42):
             manage.create_user(mock_cli)
         mock_cli.log.warning.assert_called_once()
         assert 'short' in mock_cli.log.warning.call_args[0][0]
 
     def test_db_error(self):
-        mock_cli = _mock_cli()
-        with (
-            patch('builtins.input', return_value='alice'),
-            patch('getpass.getpass', return_value='secret'),
-            patch.object(manage.db.direct, 'create_user', side_effect=Exception('duplicate')),
-        ):
+        mock_cli = _mock_cli(username='alice', password='secret', token=False)
+        with patch.object(manage.db.direct, 'create_user', side_effect=Exception('duplicate')):
             with pytest.raises(SystemExit) as exc_info:
                 manage.create_user(mock_cli)
         assert exc_info.value.code == 1
+
+    def test_token_flag_creates_token(self):
+        mock_cli = _mock_cli(username='alice', password=None, token=True)
+        with (
+            patch.object(manage.db.direct, 'create_user', return_value=7) as mock_create,
+            patch.object(manage.db.direct, 'create_token', return_value='rawtoken123') as mock_token,
+        ):
+            manage.create_user(mock_cli)
+        mock_create.assert_called_once_with('alice', password=None)
+        mock_token.assert_called_once_with(7)
+        output = mock_cli.log.info.call_args[0][0]
+        assert 'rawtoken123' in output
+
+    def test_token_and_password_is_error(self):
+        mock_cli = _mock_cli(username='alice', password='alsoset', token=True)
+        with pytest.raises(SystemExit) as exc_info:
+            manage.create_user(mock_cli)
+        assert exc_info.value.code == 1
+        mock_cli.log.error.assert_called_once()
+
+    def test_no_token_flag_requires_password(self):
+        mock_cli = _mock_cli(username='alice', password=None, token=False)
+        with pytest.raises(SystemExit) as exc_info:
+            manage.create_user(mock_cli)
+        assert exc_info.value.code == 1
+        mock_cli.log.error.assert_called_once()

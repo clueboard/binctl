@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """manage.py: Server-side admin operations for binctl."""
 
-import getpass
 import os
 import sys
 
@@ -37,26 +36,34 @@ def init_db(cli):
     cli.log.info('Database initialized.')
 
 
+@cli.argument('--username', required=True, help='Username for the new account')
+@cli.argument('--password', required=False, default=None, help='Password for the new account')
+@cli.argument('--token', action='store_true', help='Generate a non-expiring token instead of setting a password')
 @cli.subcommand('Create a new user.')
 def create_user(cli):
-    username = input('Username: ').strip()
+    username = cli.args.username.strip()
     if not username:
         cli.log.error('Username cannot be empty')
         raise SystemExit(1)
-    password = getpass.getpass('Password: ')
-    confirm = getpass.getpass('Confirm password: ')
-    if password != confirm:
-        cli.log.error('Passwords do not match')
+    if cli.args.token and cli.args.password:
+        cli.log.error('--token and --password are mutually exclusive')
         raise SystemExit(1)
-    if len(password) < 4:
-        cli.log.warning('Password is very short (fewer than 4 characters)')
-
-    try:
-        db.direct.create_user(username, password)
+    if cli.args.token:
+        user_id = db.direct.create_user(username, password=None)
+        token = db.direct.create_token(user_id)
+        cli.log.info(f"User '{username}' created. Token: {token}")
+    else:
+        if not cli.args.password:
+            cli.log.error('--password is required when --token is not set')
+            raise SystemExit(1)
+        if len(cli.args.password) < 4:
+            cli.log.warning('Password is very short (fewer than 4 characters)')
+        try:
+            db.direct.create_user(username, password=cli.args.password)
+        except Exception as exc:
+            cli.log.error('Error: %s', exc)
+            raise SystemExit(1)
         cli.log.info(f"User '{username}' created.")
-    except Exception as exc:
-        cli.log.error('Error: %s', exc)
-        raise SystemExit(1)
 
 
 @cli.subcommand('List all users.')
