@@ -30,7 +30,7 @@ cp .env.example .env
 python manage.py init-db
 
 # 5. Create a user and get a token
-python manage.py create-user --username alice --token
+python manage.py create-user alice --token
 # → prints something like: token: abc123...
 export TOKEN=<paste token here>
 
@@ -81,11 +81,11 @@ binctl --token $TOKEN node list
 5. Create a user:
    - With a non-expiring API token (recommended for scripts):
      ```
-     python manage.py create-user --username alice --token
+     python manage.py create-user alice --token
      ```
    - With a password (for browser/interactive use):
      ```
-     python manage.py create-user --username alice --password <password>
+     python manage.py create-user alice --password <password>
      ```
    Then pass `--token <token>` (or `--username`/`--password`) to `binctl` commands.
 
@@ -105,8 +105,8 @@ Key flags for `binctl`:
 `manage.py` subcommands (server-side user/token management):
 
 - `python manage.py init-db` - initialize the database schema
-- `python manage.py create-user --username <u> --password <p>` - create a user with a password
-- `python manage.py create-user --username <u> --token` - create a passwordless user and emit a non-expiring token
+- `python manage.py create-user <username> --password <p>` - create a user with a password
+- `python manage.py create-user <username> --token` - create a passwordless user and emit a non-expiring token
 - `python manage.py set-password <username>` - interactively set a new password for a user
 - `python manage.py list-users` - list users
 - `python manage.py list-tokens <username>` - list tokens for a user
@@ -235,7 +235,7 @@ The server is not running. Start it with `uvicorn web:create_app --factory` (bin
 to `binctl`.
 
 **`401 Unauthorized`**
-Token is missing or wrong. Re-create one with `python manage.py create-user --username alice --token`,
+Token is missing or wrong. Re-create one with `python manage.py create-user alice --token`,
 or list existing tokens with `python manage.py list-tokens alice`.
 
 **`DATABASE_URL not set` or database errors on startup**

@@ -41,7 +41,7 @@ def init_db(cli):
     cli.log.info('Database initialized.')
 
 
-@cli.argument('--username', required=True, help='Username for the new account')
+@cli.argument('username', help='Username for the new account')
 @cli.argument('--password', required=False, default=None, help='Password for the new account')
 @cli.argument('--token', action='store_true', help='Generate a non-expiring token instead of setting a password')
 @cli.subcommand('Create a new user.')
