@@ -183,10 +183,14 @@ class TestNodeDelete:
         assert resp.status_code == 200
 
         with engine.connect() as conn:
-            row = conn.execute(
-                text('SELECT id FROM nodes WHERE label = :label AND is_container = 1'),
-                {'label': 'Lost and Found'},
-            ).mappings().first()
+            row = (
+                conn.execute(
+                    text('SELECT id FROM nodes WHERE label = :label AND is_container = 1'),
+                    {'label': 'Lost and Found'},
+                )
+                .mappings()
+                .first()
+            )
         assert row is not None
 
         resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
