@@ -1,4 +1,3 @@
-import os
 from collections.abc import Sequence
 
 from sqlalchemy import text
@@ -7,8 +6,6 @@ from sqlalchemy.engine.row import RowMapping
 import db
 from auth import generate_token, hash_password, hash_token, mask_token
 from db.id_gen import new_id
-
-ORPHAN_REASSIGN_CONTAINER_ENV = 'ORPHAN_REASSIGN_CONTAINER'
 
 
 def fetch_token_and_touch(token: str) -> dict | None:
@@ -53,6 +50,11 @@ def fetch_token_and_touch(token: str) -> dict | None:
 
 
 def create_user(username: str, password: str | None) -> int:
+    """Insert a new user row and return its id.
+
+    Pass ****** to create a token-only account; the password_hash is
+    stored as the sentinel value '!' which will never match a real hash.
+    """
     user_id = new_id()
     password_hash = hash_password(password) if password is not None else '!'
     with db.engine.connect() as conn:
@@ -88,6 +90,7 @@ def update_password(username: str, password: str) -> bool:
 
 
 def fetch_all_users() -> Sequence[RowMapping]:
+    """Return all user rows ordered by id."""
     with db.engine.connect() as conn:
         return conn.execute(text('SELECT id, username, created_at, last_login_at FROM users ORDER BY id')).mappings().all()
 
@@ -119,7 +122,10 @@ def fetch_tokens_for_username(username: str) -> list[dict] | None:
 
 
 def revoke_tokens_for_username(username: str) -> int | None:
-    """Delete all tokens for username. Returns rowcount, or None if user not found."""
+    """Delete all tokens for username.
+
+    Returns the number of tokens deleted, or None if the user does not exist.
+    """
     with db.engine.connect() as conn:
         user = conn.execute(text('SELECT id FROM users WHERE username = :u'), {'u': username}).mappings().first()
         if user is None:
@@ -130,7 +136,3 @@ def revoke_tokens_for_username(username: str) -> int | None:
         )
         conn.commit()
     return result.rowcount
-
-
-def get_orphan_reassign_container_label() -> str | None:
-    return os.environ.get(ORPHAN_REASSIGN_CONTAINER_ENV) or None
