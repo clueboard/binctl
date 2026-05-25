@@ -161,6 +161,18 @@ class TestNodeDelete:
         resp = client.delete('/v1/nodes/99999', headers=authed_headers)
         assert resp.status_code == 404
 
+    def test_delete_container_orphans_children_when_no_orphan_location(self, client, app, make_node, authed_headers, monkeypatch):
+        monkeypatch.setitem(app.app.config, 'ORPHAN_LOCATION', None)
+        container_id = make_node('container', is_container=True)
+        child_id = make_node('child', parent_id=container_id)
+
+        resp = client.delete(f'/v1/nodes/{container_id}', headers=authed_headers)
+        assert resp.status_code == 200
+
+        resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['parent_id'] is None
+
     def test_delete_container_reassigns_children_to_existing_configured_container(self, client, app, make_node, authed_headers, monkeypatch):
         monkeypatch.setitem(app.app.config, 'ORPHAN_LOCATION', 'Lost and Found')
         source_id = make_node('source', is_container=True)

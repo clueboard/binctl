@@ -426,6 +426,11 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
         if orphan_parent_id is None:
             orphan_parent_id = create_node(orphan_location, None, True)
 
+    # If the node being deleted is itself the orphan container, do not attempt
+    # to re-parent its children there — they will be left without a parent instead.
+    if orphan_parent_id == node_id:
+        orphan_parent_id = None
+
     try:
         with transactional() as conn:
             reassigned = _reassign_children_of_deleted_node(node_id, orphan_parent_id)
