@@ -360,18 +360,16 @@ class _NotFound(Exception):
     pass
 
 
-def _find_orphan_container(label: str, excluded_id: int) -> int | None:
-    """Return the id of the first existing container with *label*, excluding *excluded_id*.
+def _find_orphan_container(label: str) -> int | None:
+    """Return the id of the first existing container with *label*.
 
     Returns None if no such container exists.
     """
     row = (
         get_db()
         .execute(
-            text(
-                'SELECT id FROM nodes WHERE label = :label AND is_container = 1 AND id <> :excluded_id ORDER BY id LIMIT 1'
-            ),
-            {'label': label, 'excluded_id': excluded_id},
+            text('SELECT id FROM nodes WHERE label = :label AND is_container = 1 ORDER BY id LIMIT 1'),
+            {'label': label},
         )
         .mappings()
         .first()
@@ -424,7 +422,7 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
     orphan_location = current_app.config.get('ORPHAN_LOCATION')
     orphan_parent_id = None
     if orphan_location:
-        orphan_parent_id = _find_orphan_container(orphan_location, node_id)
+        orphan_parent_id = _find_orphan_container(orphan_location)
         if orphan_parent_id is None:
             orphan_parent_id = create_node(orphan_location, None, True)
 

@@ -197,7 +197,7 @@ class TestNodeDelete:
         assert resp.status_code == 200
         assert resp.json()['parent_id'] is None
 
-    def test_delete_configured_container_creates_replacement_container(self, client, engine, app, make_node, authed_headers, monkeypatch):
+    def test_delete_configured_container_orphans_its_own_children(self, client, app, make_node, authed_headers, monkeypatch):
         monkeypatch.setitem(app.app.config, 'ORPHAN_LOCATION', 'Lost and Found')
         source_id = make_node('Lost and Found', is_container=True)
         child_id = make_node('child', parent_id=source_id)
@@ -205,18 +205,9 @@ class TestNodeDelete:
         resp = client.delete(f'/v1/nodes/{source_id}', headers=authed_headers)
         assert resp.status_code == 200
 
-        with engine.connect() as conn:
-            rows = conn.execute(
-                text('SELECT id FROM nodes WHERE label = :label AND is_container = 1 ORDER BY id'),
-                {'label': 'Lost and Found'},
-            ).mappings().all()
-        assert len(rows) == 1
-        replacement_id = base62.encode(rows[0]['id'])
-        assert replacement_id != source_id
-
         resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
         assert resp.status_code == 200
-        assert resp.json()['parent_id'] == replacement_id
+        assert resp.json()['parent_id'] is None
 
 
 def test_count_nodes_returns_int(app):
