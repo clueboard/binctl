@@ -5,7 +5,7 @@ import getpass
 import os
 import sys
 
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv, set_key, unset_key
 
 load_dotenv()
 
@@ -129,7 +129,9 @@ def set_orphan_reassign_container(cli):
     if not label:
         cli.log.error('Label cannot be empty')
         raise SystemExit(1)
-    db.direct.set_orphan_reassign_container_label(label)
+    dotenv_path = find_dotenv(usecwd=True) or '.env'
+    set_key(dotenv_path, 'ORPHAN_REASSIGN_CONTAINER', label)
+    os.environ['ORPHAN_REASSIGN_CONTAINER'] = label
     cli.log.info(f'Orphan reassignment container label set to {label!r}.')
 
 
@@ -144,11 +146,13 @@ def show_orphan_reassign_container(cli):
 
 @cli.subcommand('Clear the configured container label used for orphan reassignment.')
 def clear_orphan_reassign_container(cli):
-    cleared = db.direct.clear_orphan_reassign_container_label()
-    if cleared:
-        cli.log.info('Cleared orphan reassignment container label.')
+    if db.direct.get_orphan_reassign_container_label() is None:
+        cli.log.info('No orphan reassignment container label was configured.')
         return
-    cli.log.info('No orphan reassignment container label was configured.')
+    dotenv_path = find_dotenv(usecwd=True) or '.env'
+    unset_key(dotenv_path, 'ORPHAN_REASSIGN_CONTAINER')
+    os.environ.pop('ORPHAN_REASSIGN_CONTAINER', None)
+    cli.log.info('Cleared orphan reassignment container label.')
 
 
 if __name__ == '__main__':

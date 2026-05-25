@@ -165,11 +165,14 @@ class TestSetPassword:
 
 
 class TestOrphanReassignContainer:
-    def test_set_success(self):
+    def test_set_success(self, monkeypatch):
         mock_cli = _mock_cli(label='Lost and Found')
-        with patch.object(manage.db.direct, 'set_orphan_reassign_container_label') as mock_set:
+        with (
+            patch('manage.find_dotenv', return_value='.env'),
+            patch('manage.set_key') as mock_set_key,
+        ):
             manage.set_orphan_reassign_container(mock_cli)
-        mock_set.assert_called_once_with('Lost and Found')
+        mock_set_key.assert_called_once_with('.env', 'ORPHAN_REASSIGN_CONTAINER', 'Lost and Found')
         mock_cli.log.info.assert_called_once()
 
     def test_set_empty_label(self):
@@ -179,26 +182,31 @@ class TestOrphanReassignContainer:
         assert exc_info.value.code == 1
         mock_cli.log.error.assert_called_once()
 
-    def test_show_when_set(self):
+    def test_show_when_set(self, monkeypatch):
+        monkeypatch.setenv('ORPHAN_REASSIGN_CONTAINER', 'Lost and Found')
         mock_cli = _mock_cli()
-        with patch.object(manage.db.direct, 'get_orphan_reassign_container_label', return_value='Lost and Found'):
-            manage.show_orphan_reassign_container(mock_cli)
+        manage.show_orphan_reassign_container(mock_cli)
         mock_cli.log.info.assert_called_once()
 
-    def test_show_when_unset(self):
+    def test_show_when_unset(self, monkeypatch):
+        monkeypatch.delenv('ORPHAN_REASSIGN_CONTAINER', raising=False)
         mock_cli = _mock_cli()
-        with patch.object(manage.db.direct, 'get_orphan_reassign_container_label', return_value=None):
-            manage.show_orphan_reassign_container(mock_cli)
+        manage.show_orphan_reassign_container(mock_cli)
         mock_cli.log.info.assert_called_once()
 
-    def test_clear_when_set(self):
+    def test_clear_when_set(self, monkeypatch):
+        monkeypatch.setenv('ORPHAN_REASSIGN_CONTAINER', 'Lost and Found')
         mock_cli = _mock_cli()
-        with patch.object(manage.db.direct, 'clear_orphan_reassign_container_label', return_value=True):
+        with (
+            patch('manage.find_dotenv', return_value='.env'),
+            patch('manage.unset_key') as mock_unset_key,
+        ):
             manage.clear_orphan_reassign_container(mock_cli)
+        mock_unset_key.assert_called_once_with('.env', 'ORPHAN_REASSIGN_CONTAINER')
         mock_cli.log.info.assert_called_once()
 
-    def test_clear_when_unset(self):
+    def test_clear_when_unset(self, monkeypatch):
+        monkeypatch.delenv('ORPHAN_REASSIGN_CONTAINER', raising=False)
         mock_cli = _mock_cli()
-        with patch.object(manage.db.direct, 'clear_orphan_reassign_container_label', return_value=False):
-            manage.clear_orphan_reassign_container(mock_cli)
+        manage.clear_orphan_reassign_container(mock_cli)
         mock_cli.log.info.assert_called_once()

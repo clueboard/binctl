@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 import db
 from auth import generate_token, hash_password, hash_token, verify_password_hash
 from db import base62
-from db.direct import ORPHAN_REASSIGN_CONTAINER_KEY
+from db.direct import get_orphan_reassign_container_label
 from db.id_gen import new_id
 
 logger = logging.getLogger(__name__)
@@ -168,19 +168,6 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .all()
     )
     return [tag_row_to_dict(r) for r in rows]
-
-
-def fetch_config_value(key: str) -> str | None:
-    row = (
-        get_db()
-        .execute(
-            text('SELECT value FROM app_config WHERE key = :key'),
-            {'key': key},
-        )
-        .mappings()
-        .first()
-    )
-    return row['value'] if row else None
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
@@ -402,7 +389,7 @@ def _find_reassignment_target(label: str, deleted_node_id: int) -> int | None:
 
 
 def _reassign_children_of_deleted_node(node_id: int) -> int:
-    label = fetch_config_value(ORPHAN_REASSIGN_CONTAINER_KEY)
+    label = get_orphan_reassign_container_label()
     if not label:
         return 0
 

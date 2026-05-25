@@ -62,7 +62,6 @@ def clean_db(engine):
         # Delete in dependency order so FK constraints are satisfied
         conn.execute(text('DELETE FROM tokens'))
         conn.execute(text('DELETE FROM users'))
-        conn.execute(text('DELETE FROM app_config'))
         conn.execute(text('DELETE FROM tag_node'))
         conn.execute(text('DELETE FROM edges'))
         conn.execute(text('DELETE FROM nodes'))

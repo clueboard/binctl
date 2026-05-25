@@ -1,6 +1,5 @@
 from sqlalchemy import text
 
-import db.direct
 from db import base62
 
 
@@ -162,8 +161,8 @@ class TestNodeDelete:
         resp = client.delete('/v1/nodes/99999', headers=authed_headers)
         assert resp.status_code == 404
 
-    def test_delete_container_reassigns_children_to_existing_configured_container(self, client, make_node, authed_headers):
-        db.direct.set_orphan_reassign_container_label('Lost and Found')
+    def test_delete_container_reassigns_children_to_existing_configured_container(self, client, make_node, authed_headers, monkeypatch):
+        monkeypatch.setenv('ORPHAN_REASSIGN_CONTAINER', 'Lost and Found')
         source_id = make_node('source', is_container=True)
         target_id = make_node('Lost and Found', is_container=True)
         child_id = make_node('child', parent_id=source_id)
@@ -175,8 +174,8 @@ class TestNodeDelete:
         assert resp.status_code == 200
         assert resp.json()['parent_id'] == target_id
 
-    def test_delete_container_creates_configured_reassignment_container_when_missing(self, client, engine, make_node, authed_headers):
-        db.direct.set_orphan_reassign_container_label('Lost and Found')
+    def test_delete_container_creates_configured_reassignment_container_when_missing(self, client, engine, make_node, authed_headers, monkeypatch):
+        monkeypatch.setenv('ORPHAN_REASSIGN_CONTAINER', 'Lost and Found')
         source_id = make_node('source', is_container=True)
         child_id = make_node('child', parent_id=source_id)
 
@@ -198,8 +197,8 @@ class TestNodeDelete:
         assert resp.status_code == 200
         assert resp.json()['parent_id'] is None
 
-    def test_delete_configured_container_creates_replacement_container(self, client, engine, make_node, authed_headers):
-        db.direct.set_orphan_reassign_container_label('Lost and Found')
+    def test_delete_configured_container_creates_replacement_container(self, client, engine, make_node, authed_headers, monkeypatch):
+        monkeypatch.setenv('ORPHAN_REASSIGN_CONTAINER', 'Lost and Found')
         source_id = make_node('Lost and Found', is_container=True)
         child_id = make_node('child', parent_id=source_id)
 

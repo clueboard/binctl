@@ -3,7 +3,7 @@ CREATE TABLE schema_version (
     version      INT NOT NULL
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 2);
+INSERT INTO schema_version (id, version) VALUES (1, 1);
 
 CREATE TABLE nodes (
     id           BIGINT NOT NULL PRIMARY KEY,
@@ -71,8 +71,3 @@ CREATE TABLE tokens (
     UNIQUE (token_hash)
 );
 
-CREATE TABLE app_config (
-    key          VARCHAR(255) NOT NULL PRIMARY KEY,
-    value        TEXT NOT NULL,
-    updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
