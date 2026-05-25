@@ -360,44 +360,18 @@ class _NotFound(Exception):
     pass
 
 
-def _insert_node(node_id: int, label: str, description: str | None, is_container: bool) -> None:
-    get_db().execute(
-        text(
-            """
-            INSERT INTO nodes (id, label, description, is_container)
-            VALUES (:id, :label, :description, :is_container)
-            """
-        ),
-        {'id': node_id, 'label': label, 'description': description, 'is_container': is_container},
-    )
+def _find_orphan_container(label: str, excluded_id: int) -> int | None:
+    """Return the id of the first existing container with *label*, excluding *excluded_id*.
 
-
-def _find_reassignment_target(label: str, deleted_node_id: int) -> int | None:
+    Returns None if no such container exists.
+    """
     row = (
         get_db()
         .execute(
             text(
-                """
-                WITH RECURSIVE descendants AS (
-                    SELECT child_id
-                    FROM edges
-                    WHERE parent_id = :deleted_node_id
-                    UNION ALL
-                    SELECT e.child_id
-                    FROM edges e
-                    JOIN descendants d ON e.parent_id = d.child_id
-                )
-                SELECT id
-                FROM nodes
-                WHERE label = :label
-                  AND is_container = 1
-                  AND id <> :deleted_node_id
-                  AND id NOT IN (SELECT child_id FROM descendants)
-                ORDER BY id
-                LIMIT 1
-                """
+                'SELECT id FROM nodes WHERE label = :label AND is_container = 1 AND id <> :excluded_id ORDER BY id LIMIT 1'
             ),
-            {'label': label, 'deleted_node_id': deleted_node_id},
+            {'label': label, 'excluded_id': excluded_id},
         )
         .mappings()
         .first()
@@ -405,36 +379,36 @@ def _find_reassignment_target(label: str, deleted_node_id: int) -> int | None:
     return row['id'] if row else None
 
 
-def _reassign_children_of_deleted_node(node_id: int, orphan_location: str | None) -> int:
-    """Reassign direct children of node_id to the orphan container.
+def _reassign_children_of_deleted_node(node_id: int, parent_id: int | None) -> int:
+    """Reassign direct children of *node_id* to *parent_id*.
 
-    If *orphan_location* is None or the node has no children, returns 0 immediately.
-    Finds the first existing container with that label that is outside the deleted
-    subtree; creates a new root container with that label if none is found.
-    Returns the number of reassigned edges.
+    If *parent_id* is None or the node has no children, returns 0 immediately.
+    Returns the number of reassigned children.
     """
-    if not orphan_location:
+    if parent_id is None:
         return 0
 
-    child_ids = [row['child_id'] for row in get_db().execute(text('SELECT child_id FROM edges WHERE parent_id = :id ORDER BY child_id'), {'id': node_id}).mappings().all()]
+    rows = (
+        get_db()
+        .execute(
+            text('SELECT child_id FROM edges WHERE parent_id = :id ORDER BY child_id'),
+            {'id': node_id},
+        )
+        .mappings()
+        .all()
+    )
+    child_ids = [row['child_id'] for row in rows]
     if not child_ids:
         return 0
 
-    target_id = _find_reassignment_target(orphan_location, node_id)
-    if target_id is None:
-        target_id = new_id()
-        _insert_node(target_id, orphan_location, None, True)
-
-    deleted_edge_count = 0
     for child_id in child_ids:
-        result = get_db().execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': child_id})
-        deleted_edge_count += result.rowcount
+        get_db().execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': child_id})
         get_db().execute(
             text('INSERT INTO edges (parent_id, child_id) VALUES (:parent_id, :child_id)'),
-            {'parent_id': target_id, 'child_id': child_id},
+            {'parent_id': parent_id, 'child_id': child_id},
         )
 
-    return deleted_edge_count
+    return len(child_ids)
 
 
 def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
@@ -448,10 +422,17 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
     None if the node does not exist.
     """
     orphan_location = current_app.config.get('ORPHAN_LOCATION')
+    orphan_parent_id = None
+    if orphan_location:
+        orphan_parent_id = _find_orphan_container(orphan_location, node_id)
+        if orphan_parent_id is None:
+            orphan_parent_id = create_node(orphan_location, None, True)
+
     try:
         with transactional() as conn:
-            edge_count = _reassign_children_of_deleted_node(node_id, orphan_location)
-            object_count = edge_count
+            reassigned = _reassign_children_of_deleted_node(node_id, orphan_parent_id)
+            edge_count = reassigned
+            object_count = reassigned
 
             result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
             object_count += result.rowcount

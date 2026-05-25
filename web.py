@@ -65,7 +65,7 @@ def create_app():
 
     cx_app = connexion.App(__name__, specification_dir='.')
     cx_app.app.config['SESSION_LIFETIME_DAYS'] = session_lifetime_days
-    cx_app.app.config['ORPHAN_LOCATION'] = os.environ.get('ORPHAN_LOCATION') or None
+    cx_app.app.config['ORPHAN_LOCATION'] = os.environ.get('ORPHAN_LOCATION') or None  # `or None` allows the user to set ORPHAN_LOCATION to an empty string.
     cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=True)
     cx_app.add_middleware(
         CORSMiddleware,
