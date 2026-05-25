@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 import db
 from auth import generate_token, hash_password, hash_token, verify_password_hash
 from db import base62
+from db.direct import ORPHAN_REASSIGN_CONTAINER_KEY
 from db.id_gen import new_id
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,19 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .all()
     )
     return [tag_row_to_dict(r) for r in rows]
+
+
+def fetch_config_value(key: str) -> str | None:
+    row = (
+        get_db()
+        .execute(
+            text('SELECT value FROM app_config WHERE key = :key'),
+            {'key': key},
+        )
+        .mappings()
+        .first()
+    )
+    return row['value'] if row else None
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
@@ -342,12 +356,83 @@ class _NotFound(Exception):
     pass
 
 
+def _insert_node(node_id: int, label: str, description: str | None, is_container: bool) -> None:
+    get_db().execute(
+        text(
+            """
+            INSERT INTO nodes (id, label, description, is_container)
+            VALUES (:id, :label, :description, :is_container)
+            """
+        ),
+        {'id': node_id, 'label': label, 'description': description, 'is_container': is_container},
+    )
+
+
+def _find_reassignment_target(label: str, deleted_node_id: int) -> int | None:
+    row = (
+        get_db()
+        .execute(
+            text(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT child_id
+                    FROM edges
+                    WHERE parent_id = :deleted_node_id
+                    UNION ALL
+                    SELECT e.child_id
+                    FROM edges e
+                    JOIN descendants d ON e.parent_id = d.child_id
+                )
+                SELECT id
+                FROM nodes
+                WHERE label = :label
+                  AND is_container = 1
+                  AND id <> :deleted_node_id
+                  AND id NOT IN (SELECT child_id FROM descendants)
+                ORDER BY id
+                LIMIT 1
+                """
+            ),
+            {'label': label, 'deleted_node_id': deleted_node_id},
+        )
+        .mappings()
+        .first()
+    )
+    return row['id'] if row else None
+
+
+def _reassign_children_of_deleted_node(node_id: int) -> int:
+    label = fetch_config_value(ORPHAN_REASSIGN_CONTAINER_KEY)
+    if not label:
+        return 0
+
+    child_ids = [row['child_id'] for row in get_db().execute(text('SELECT child_id FROM edges WHERE parent_id = :id ORDER BY child_id'), {'id': node_id}).mappings().all()]
+    if not child_ids:
+        return 0
+
+    target_id = _find_reassignment_target(label, node_id)
+    if target_id is None:
+        target_id = new_id()
+        _insert_node(target_id, label, None, True)
+
+    deleted_edge_count = 0
+    for child_id in child_ids:
+        result = get_db().execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': child_id})
+        deleted_edge_count += result.rowcount
+        get_db().execute(
+            text('INSERT INTO edges (parent_id, child_id) VALUES (:parent_id, :child_id)'),
+            {'parent_id': target_id, 'child_id': child_id},
+        )
+
+    return deleted_edge_count
+
+
 def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
     """Deletes a node and its associated edges and tag associations."""
     try:
         with transactional() as conn:
-            edge_count = 0
-            object_count = 0
+            edge_count = _reassign_children_of_deleted_node(node_id)
+            object_count = edge_count
 
             result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
             object_count += result.rowcount

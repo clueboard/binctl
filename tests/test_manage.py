@@ -162,3 +162,43 @@ class TestSetPassword:
                 manage.set_password(mock_cli)
         assert exc_info.value.code == 1
         mock_cli.log.error.assert_called_once()
+
+
+class TestOrphanReassignContainer:
+    def test_set_success(self):
+        mock_cli = _mock_cli(label='Lost and Found')
+        with patch.object(manage.db.direct, 'set_orphan_reassign_container_label') as mock_set:
+            manage.set_orphan_reassign_container(mock_cli)
+        mock_set.assert_called_once_with('Lost and Found')
+        mock_cli.log.info.assert_called_once()
+
+    def test_set_empty_label(self):
+        mock_cli = _mock_cli(label='   ')
+        with pytest.raises(SystemExit) as exc_info:
+            manage.set_orphan_reassign_container(mock_cli)
+        assert exc_info.value.code == 1
+        mock_cli.log.error.assert_called_once()
+
+    def test_show_when_set(self):
+        mock_cli = _mock_cli()
+        with patch.object(manage.db.direct, 'get_orphan_reassign_container_label', return_value='Lost and Found'):
+            manage.show_orphan_reassign_container(mock_cli)
+        mock_cli.log.info.assert_called_once()
+
+    def test_show_when_unset(self):
+        mock_cli = _mock_cli()
+        with patch.object(manage.db.direct, 'get_orphan_reassign_container_label', return_value=None):
+            manage.show_orphan_reassign_container(mock_cli)
+        mock_cli.log.info.assert_called_once()
+
+    def test_clear_when_set(self):
+        mock_cli = _mock_cli()
+        with patch.object(manage.db.direct, 'clear_orphan_reassign_container_label', return_value=True):
+            manage.clear_orphan_reassign_container(mock_cli)
+        mock_cli.log.info.assert_called_once()
+
+    def test_clear_when_unset(self):
+        mock_cli = _mock_cli()
+        with patch.object(manage.db.direct, 'clear_orphan_reassign_container_label', return_value=False):
+            manage.clear_orphan_reassign_container(mock_cli)
+        mock_cli.log.info.assert_called_once()

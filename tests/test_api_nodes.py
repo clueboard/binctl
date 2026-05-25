@@ -1,3 +1,8 @@
+import db.direct
+from db import base62
+from sqlalchemy import text
+
+
 class TestNodeCreate:
     def test_create_minimal(self, client, authed_headers):
         resp = client.post('/v1/nodes', json={'label': 'shelf-A'}, headers=authed_headers)
@@ -155,6 +160,63 @@ class TestNodeDelete:
     def test_delete_not_found(self, client, authed_headers):
         resp = client.delete('/v1/nodes/99999', headers=authed_headers)
         assert resp.status_code == 404
+
+    def test_delete_container_reassigns_children_to_existing_configured_container(self, client, make_node, authed_headers):
+        db.direct.set_orphan_reassign_container_label('Lost and Found')
+        source_id = make_node('source', is_container=True)
+        target_id = make_node('Lost and Found', is_container=True)
+        child_id = make_node('child', parent_id=source_id)
+
+        resp = client.delete(f'/v1/nodes/{source_id}', headers=authed_headers)
+        assert resp.status_code == 200
+
+        resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['parent_id'] == target_id
+
+    def test_delete_container_creates_configured_reassignment_container_when_missing(self, client, engine, make_node, authed_headers):
+        db.direct.set_orphan_reassign_container_label('Lost and Found')
+        source_id = make_node('source', is_container=True)
+        child_id = make_node('child', parent_id=source_id)
+
+        resp = client.delete(f'/v1/nodes/{source_id}', headers=authed_headers)
+        assert resp.status_code == 200
+
+        with engine.connect() as conn:
+            row = conn.execute(
+                text('SELECT id FROM nodes WHERE label = :label AND is_container = 1'),
+                {'label': 'Lost and Found'},
+            ).mappings().first()
+        assert row is not None
+
+        resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['parent_id'] == base62.encode(row['id'])
+
+        resp = client.get(f'/v1/nodes/{base62.encode(row["id"])}', headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['parent_id'] is None
+
+    def test_delete_configured_container_creates_replacement_container(self, client, engine, make_node, authed_headers):
+        db.direct.set_orphan_reassign_container_label('Lost and Found')
+        source_id = make_node('Lost and Found', is_container=True)
+        child_id = make_node('child', parent_id=source_id)
+
+        resp = client.delete(f'/v1/nodes/{source_id}', headers=authed_headers)
+        assert resp.status_code == 200
+
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text('SELECT id FROM nodes WHERE label = :label AND is_container = 1 ORDER BY id'),
+                {'label': 'Lost and Found'},
+            ).mappings().all()
+        assert len(rows) == 1
+        replacement_id = base62.encode(rows[0]['id'])
+        assert replacement_id != source_id
+
+        resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['parent_id'] == replacement_id
 
 
 def test_count_nodes_returns_int(app):

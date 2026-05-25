@@ -111,6 +111,9 @@ Key flags for `binctl`:
 - `python manage.py list-users` - list users
 - `python manage.py list-tokens <username>` - list tokens for a user
 - `python manage.py revoke-tokens <username>` - revoke all tokens for a user
+- `python manage.py set-orphan-reassign-container <label>` - set the container label used when deleted containers shed children
+- `python manage.py show-orphan-reassign-container` - show the configured orphan reassignment label
+- `python manage.py clear-orphan-reassign-container` - clear the orphan reassignment label
 
 ## Example: Building an inventory
 
@@ -216,6 +219,8 @@ This gives you a **forest of trees**:
 - top-level nodes (rooms, "unplaced items") have no parent
 - containers and items have exactly one parent
 - containers can have many children
+
+When you delete a container, any direct children can be reassigned first by configuring an orphan destination label with `manage.py set-orphan-reassign-container`. The server looks up a container by that label at delete time, and if none exists outside the deleted subtree it creates a new root container with that label automatically.
 
 ### Tags
 

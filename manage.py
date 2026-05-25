@@ -122,5 +122,34 @@ def revoke_tokens(cli):
     cli.log.info(f"Revoked {count} token(s) for '{cli.args.username}'.")
 
 
+@cli.argument('label', help='Container label to receive children of deleted containers')
+@cli.subcommand('Set the container label used when reassigning children from deleted containers.')
+def set_orphan_reassign_container(cli):
+    label = cli.args.label.strip()
+    if not label:
+        cli.log.error('Label cannot be empty')
+        raise SystemExit(1)
+    db.direct.set_orphan_reassign_container_label(label)
+    cli.log.info(f'Orphan reassignment container label set to {label!r}.')
+
+
+@cli.subcommand('Show the configured container label used for orphan reassignment.')
+def show_orphan_reassign_container(cli):
+    label = db.direct.get_orphan_reassign_container_label()
+    if label is None:
+        cli.log.info('No orphan reassignment container label is configured.')
+        return
+    cli.log.info(f'Orphan reassignment container label: {label}')
+
+
+@cli.subcommand('Clear the configured container label used for orphan reassignment.')
+def clear_orphan_reassign_container(cli):
+    cleared = db.direct.clear_orphan_reassign_container_label()
+    if cleared:
+        cli.log.info('Cleared orphan reassignment container label.')
+        return
+    cli.log.info('No orphan reassignment container label was configured.')
+
+
 if __name__ == '__main__':
     cli()

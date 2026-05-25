@@ -3,7 +3,7 @@ CREATE TABLE schema_version (
     version      INT NOT NULL
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 1);
+INSERT INTO schema_version (id, version) VALUES (1, 2);
 
 CREATE TABLE nodes (
     id           BIGINT NOT NULL PRIMARY KEY,
@@ -69,4 +69,10 @@ CREATE TABLE tokens (
     expires_at   TIMESTAMP,
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (token_hash)
+);
+
+CREATE TABLE app_config (
+    key          VARCHAR(255) NOT NULL PRIMARY KEY,
+    value        TEXT NOT NULL,
+    updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

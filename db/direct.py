@@ -7,6 +7,8 @@ import db
 from auth import generate_token, hash_password, hash_token, mask_token
 from db.id_gen import new_id
 
+ORPHAN_REASSIGN_CONTAINER_KEY = 'orphan_reassign_container_label'
+
 
 def fetch_token_and_touch(token: str) -> dict | None:
     """Fetch token+user row and update last_used_at.
@@ -127,3 +129,42 @@ def revoke_tokens_for_username(username: str) -> int | None:
         )
         conn.commit()
     return result.rowcount
+
+
+def get_config_value(key: str) -> str | None:
+    with db.engine.connect() as conn:
+        row = conn.execute(text('SELECT value FROM app_config WHERE key = :key'), {'key': key}).mappings().first()
+    return row['value'] if row else None
+
+
+def set_config_value(key: str, value: str) -> None:
+    with db.engine.connect() as conn:
+        result = conn.execute(
+            text('UPDATE app_config SET value = :value, updated_at = CURRENT_TIMESTAMP WHERE key = :key'),
+            {'key': key, 'value': value},
+        )
+        if result.rowcount == 0:
+            conn.execute(
+                text('INSERT INTO app_config (key, value) VALUES (:key, :value)'),
+                {'key': key, 'value': value},
+            )
+        conn.commit()
+
+
+def delete_config_value(key: str) -> bool:
+    with db.engine.connect() as conn:
+        result = conn.execute(text('DELETE FROM app_config WHERE key = :key'), {'key': key})
+        conn.commit()
+    return result.rowcount > 0
+
+
+def get_orphan_reassign_container_label() -> str | None:
+    return get_config_value(ORPHAN_REASSIGN_CONTAINER_KEY)
+
+
+def set_orphan_reassign_container_label(label: str) -> None:
+    set_config_value(ORPHAN_REASSIGN_CONTAINER_KEY, label)
+
+
+def clear_orphan_reassign_container_label() -> bool:
+    return delete_config_value(ORPHAN_REASSIGN_CONTAINER_KEY)
