@@ -1,6 +1,7 @@
+from sqlalchemy import text
+
 import db.direct
 from db import base62
-from sqlalchemy import text
 
 
 class TestNodeCreate:
