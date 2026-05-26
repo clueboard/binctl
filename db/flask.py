@@ -23,6 +23,7 @@ _DUMMY_HASH = hash_password('dummy')
 
 
 def get_db() -> Connection:
+    """Return the per-request SQLAlchemy connection, opening it on first access."""
     if 'db' not in g:
         g.db = db.engine.connect()
     return g.db
@@ -51,6 +52,7 @@ def transactional() -> Iterator[Connection]:
 
 
 def iso(dt: datetime | str | None) -> str | None:
+    """Return an ISO 8601 string for *dt*, or None if *dt* is None."""
     if dt is None:
         return None
     if isinstance(dt, str):
@@ -59,6 +61,7 @@ def iso(dt: datetime | str | None) -> str | None:
 
 
 def node_row_to_dict(row: RowMapping) -> dict:
+    """Serialize a nodes row to a plain dict suitable for JSON responses."""
     return {
         'id': base62.encode(row['id']),
         'label': row['label'],
@@ -70,6 +73,7 @@ def node_row_to_dict(row: RowMapping) -> dict:
 
 
 def tag_row_to_dict(row: RowMapping) -> dict:
+    """Serialize a tags row to a plain dict suitable for JSON responses."""
     return {
         'id': base62.encode(row['id']),
         'name': row['name'],
@@ -84,6 +88,7 @@ def tag_row_to_dict(row: RowMapping) -> dict:
 
 
 def fetch_node(node_id: int) -> RowMapping | None:
+    """Return the nodes row for *node_id*, or None if it does not exist."""
     return (
         get_db()
         .execute(
@@ -102,6 +107,7 @@ def fetch_node(node_id: int) -> RowMapping | None:
 
 
 def fetch_parent_id(node_id: int) -> int | None:
+    """Return the parent node id of *node_id*, or None if it has no parent."""
     row = (
         get_db()
         .execute(
@@ -115,6 +121,7 @@ def fetch_parent_id(node_id: int) -> int | None:
 
 
 def fetch_children(node_id: int) -> list[dict]:
+    """Return serialized dicts for all direct children of *node_id*."""
     rows = (
         get_db()
         .execute(
@@ -137,6 +144,7 @@ def fetch_children(node_id: int) -> list[dict]:
 
 
 def node_has_children(node_id: int) -> bool:
+    """Return True if *node_id* has at least one child edge."""
     return (
         get_db()
         .execute(
@@ -149,6 +157,7 @@ def node_has_children(node_id: int) -> bool:
 
 
 def fetch_tags_for_node(node_id: int) -> list[dict]:
+    """Return serialized tag dicts for all tags attached to *node_id*."""
     rows = (
         get_db()
         .execute(
@@ -231,6 +240,7 @@ def set_parent(node_id: int, parent_id: int | None) -> None:
 
 
 def replace_node_tags(node_id: int, tag_ids: list[int]) -> None:
+    """Replace all tag associations for *node_id* with *tag_ids*."""
     conn = get_db()
     conn.execute(text('DELETE FROM tag_node WHERE node_id = :node_id'), {'node_id': node_id})
     if tag_ids:
@@ -241,10 +251,12 @@ def replace_node_tags(node_id: int, tag_ids: list[int]) -> None:
 
 
 def count_nodes() -> int:
+    """Return the total number of nodes."""
     return get_db().execute(text('SELECT COUNT(*) FROM nodes')).scalar() or 0
 
 
 def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
+    """Return a page of node rows ordered by id."""
     return (
         get_db()
         .execute(
@@ -271,6 +283,11 @@ def create_node(
     parent_id: int | None = None,
     tag_ids: list[int] | None = None,
 ) -> int:
+    """Insert a new node and return its id.
+
+    Optionally assigns a parent and attaches tags in the same transaction.
+    Raises ValueError for invalid parent_id or unknown tag_ids.
+    """
     with transactional():
         node_id = new_id()
         get_db().execute(
@@ -297,6 +314,7 @@ _UPDATABLE_NODE_FIELDS = frozenset({'label', 'description', 'is_container'})
 
 
 def update_node_fields(node_id: int, fields: dict) -> int:
+    """Apply a subset of updatable fields to *node_id*. Returns rowcount."""
     invalid = fields.keys() - _UPDATABLE_NODE_FIELDS
     if invalid:
         raise ValueError(f'non-updatable node fields: {invalid}')
@@ -342,12 +360,82 @@ class _NotFound(Exception):
     pass
 
 
+def _find_orphan_container(label: str) -> int | None:
+    """Return the id of the first existing container with *label*.
+
+    Returns None if no such container exists.
+    """
+    row = (
+        get_db()
+        .execute(
+            text('SELECT id FROM nodes WHERE label = :label AND is_container = 1 ORDER BY id LIMIT 1'),
+            {'label': label},
+        )
+        .mappings()
+        .first()
+    )
+    return row['id'] if row else None
+
+
+def _reassign_children_of_deleted_node(node_id: int, parent_id: int | None) -> int:
+    """Reassign direct children of *node_id* to *parent_id*.
+
+    If *parent_id* is None or the node has no children, returns 0 immediately.
+    Returns the number of reassigned children.
+    """
+    if parent_id is None:
+        return 0
+
+    rows = (
+        get_db()
+        .execute(
+            text('SELECT child_id FROM edges WHERE parent_id = :id ORDER BY child_id'),
+            {'id': node_id},
+        )
+        .mappings()
+        .all()
+    )
+    child_ids = [row['child_id'] for row in rows]
+    if not child_ids:
+        return 0
+
+    for child_id in child_ids:
+        get_db().execute(text('DELETE FROM edges WHERE child_id = :id'), {'id': child_id})
+        get_db().execute(
+            text('INSERT INTO edges (parent_id, child_id) VALUES (:parent_id, :child_id)'),
+            {'parent_id': parent_id, 'child_id': child_id},
+        )
+
+    return len(child_ids)
+
+
 def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
-    """Deletes a node and its associated edges and tag associations."""
+    """Delete a node and its associated edges and tag associations.
+
+    Children of the deleted node are reassigned to the ORPHAN_LOCATION container
+    (read from app config) when that setting is configured; otherwise they are
+    left without a parent.
+
+    Returns a (total, edge_count, tag_count, node_count) tuple on success, or
+    None if the node does not exist.
+    """
+    orphan_location = current_app.config.get('ORPHAN_LOCATION')
+    orphan_parent_id = None
+    if orphan_location:
+        orphan_parent_id = _find_orphan_container(orphan_location)
+        if orphan_parent_id is None:
+            orphan_parent_id = create_node(orphan_location, None, True)
+
+    # If the node being deleted is itself the orphan container, do not attempt
+    # to re-parent its children there — they will be left without a parent instead.
+    if orphan_parent_id == node_id:
+        orphan_parent_id = None
+
     try:
         with transactional() as conn:
-            edge_count = 0
-            object_count = 0
+            reassigned = _reassign_children_of_deleted_node(node_id, orphan_parent_id)
+            edge_count = reassigned
+            object_count = reassigned
 
             result = conn.execute(text('DELETE FROM edges WHERE parent_id = :id'), {'id': node_id})
             object_count += result.rowcount
@@ -382,6 +470,7 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
 
 
 def fetch_tag(tag_id: int) -> RowMapping | None:
+    """Return the tags row for *tag_id*, or None if it does not exist."""
     return (
         get_db()
         .execute(
@@ -394,10 +483,12 @@ def fetch_tag(tag_id: int) -> RowMapping | None:
 
 
 def count_tags() -> int:
+    """Return the total number of tags."""
     return get_db().execute(text('SELECT COUNT(*) FROM tags')).scalar() or 0
 
 
 def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
+    """Return a page of tag rows ordered by name."""
     return (
         get_db()
         .execute(
@@ -417,6 +508,7 @@ def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
 
 
 def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
+    """Return all node rows tagged with *tag_id*, ordered by node id."""
     return (
         get_db()
         .execute(
@@ -438,6 +530,7 @@ def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
 
 
 def create_tag(name: str) -> int:
+    """Insert a new tag with *name* and return its id. Raises ValueError on duplicate name."""
     tag_id = new_id()
     try:
         with transactional():
@@ -448,6 +541,7 @@ def create_tag(name: str) -> int:
 
 
 def update_tag(tag_id: int, name: str) -> int:
+    """Rename *tag_id* to *name*. Returns rowcount; raises ValueError on duplicate name."""
     try:
         with transactional():
             result = get_db().execute(
@@ -484,6 +578,7 @@ def delete_tag(tag_id: int) -> tuple[int, int] | None:
 
 
 def get_user(username: str) -> RowMapping | None:
+    """Return the users row for *username*, or None if it does not exist."""
     return (
         get_db()
         .execute(
@@ -513,6 +608,7 @@ def verify_password(username: str, password: str) -> RowMapping | None:
 
 
 def update_user_last_login(user_id: int) -> None:
+    """Update last_login_at to the current timestamp for *user_id*."""
     get_db().execute(
         text('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = :id'),
         {'id': user_id},
@@ -534,6 +630,7 @@ def create_user_session(user_id: int) -> str:
 
 
 def revoke_token(token_id: int) -> None:
+    """Delete the token row identified by *token_id*."""
     with transactional():
         get_db().execute(
             text('DELETE FROM tokens WHERE id = :id'),

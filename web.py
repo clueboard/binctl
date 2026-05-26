@@ -31,6 +31,14 @@ _LOGGING_CONFIG = {
 
 
 def create_app():
+    """Create and configure the Connexion/Flask application.
+
+    Reads configuration from environment variables (loaded from .env if present):
+    - DATABASE_URL (required)
+    - CORS_ORIGINS, CORS_MAX_AGE — cross-origin request policy
+    - SESSION_LIFETIME_DAYS — web session token lifetime (default: 30)
+    - ORPHAN_LOCATION — container label for children of deleted containers (optional)
+    """
     load_dotenv()
     logging.config.dictConfig(_LOGGING_CONFIG)
 
@@ -57,6 +65,7 @@ def create_app():
 
     cx_app = connexion.App(__name__, specification_dir='.')
     cx_app.app.config['SESSION_LIFETIME_DAYS'] = session_lifetime_days
+    cx_app.app.config['ORPHAN_LOCATION'] = os.environ.get('ORPHAN_LOCATION') or None  # `or None` allows the user to set ORPHAN_LOCATION to an empty string.
     cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=True)
     cx_app.add_middleware(
         CORSMiddleware,

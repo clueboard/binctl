@@ -70,3 +70,4 @@ CREATE TABLE tokens (
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (token_hash)
 );
+

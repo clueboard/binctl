@@ -30,6 +30,7 @@ def main(cli):
 
 @cli.subcommand('Initialize the database schema.')
 def init_db(cli):
+    """Apply the v1 SQL schema to the configured database."""
     schema = Path(__file__).parent / 'schemas' / 'v1.sql'
     sql = schema.read_text()
     with db.engine.connect() as conn:
@@ -46,6 +47,7 @@ def init_db(cli):
 @cli.argument('--token', action='store_true', help='Generate a non-expiring token instead of setting a password')
 @cli.subcommand('Create a new user.')
 def create_user(cli):
+    """Create a user with a password or a long-lived token."""
     username = cli.args.username.strip()
     if not username:
         cli.log.error('Username cannot be empty')
@@ -74,6 +76,7 @@ def create_user(cli):
 @cli.argument('username', help='Username to update')
 @cli.subcommand('Set password for a user.')
 def set_password(cli):
+    """Interactively prompt for and update a user's password."""
     password = getpass.getpass('New password: ')
     if len(password) < 6:
         cli.log.error('Password must be at least 6 characters')
@@ -90,6 +93,7 @@ def set_password(cli):
 
 @cli.subcommand('List all users.')
 def list_users(cli):
+    """Print all user accounts with their creation time and last login."""
     rows = db.direct.fetch_all_users()
     if not rows:
         cli.log.info('No users.')
@@ -101,6 +105,7 @@ def list_users(cli):
 @cli.argument('username', help='Username to look up')
 @cli.subcommand('List tokens for a user.')
 def list_tokens(cli):
+    """Print all active tokens for the given user."""
     rows = db.direct.fetch_tokens_for_username(cli.args.username)
     if rows is None:
         cli.log.error("User '%s' not found.", cli.args.username)
@@ -115,6 +120,7 @@ def list_tokens(cli):
 @cli.argument('username', help='Username to revoke tokens for')
 @cli.subcommand('Revoke all tokens for a user.')
 def revoke_tokens(cli):
+    """Delete every active token belonging to the given user."""
     count = db.direct.revoke_tokens_for_username(cli.args.username)
     if count is None:
         cli.log.error("User '%s' not found.", cli.args.username)

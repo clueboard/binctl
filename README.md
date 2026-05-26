@@ -217,6 +217,8 @@ This gives you a **forest of trees**:
 - containers and items have exactly one parent
 - containers can have many children
 
+When you delete a container, any direct children can be reassigned by setting `ORPHAN_LOCATION` in your `.env`. The server looks up a container by that label at delete time, and if none exists outside the deleted subtree it creates a new root container with that label automatically.
+
 ### Tags
 
 Tags are stored in `tags` + `tag_node` for future filtering and categorization.
