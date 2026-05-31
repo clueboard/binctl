@@ -62,7 +62,7 @@ def iso(dt: datetime | str | None) -> str | None:
 
 def node_row_to_dict(row: RowMapping) -> dict:
     """Serialize a nodes row to a plain dict suitable for JSON responses."""
-    return {
+    result = {
         'id': base62.encode(row['id']),
         'label': row['label'],
         'description': row['description'],
@@ -70,6 +70,9 @@ def node_row_to_dict(row: RowMapping) -> dict:
         'created_at': iso(row['created_at']),
         'updated_at': iso(row['updated_at']),
     }
+    if 'parent_id' in row:
+        result['parent_id'] = base62.encode(row['parent_id']) if row['parent_id'] is not None else None
+    return result
 
 
 def tag_row_to_dict(row: RowMapping) -> dict:
@@ -128,7 +131,7 @@ def fetch_children(node_id: int) -> list[dict]:
             text(
                 """
             SELECT n.id, n.label, n.description, n.is_container,
-                   n.created_at, n.updated_at
+                   n.created_at, n.updated_at, e.parent_id
             FROM edges e
             JOIN nodes n ON n.id = e.child_id
             WHERE e.parent_id = :id
@@ -262,9 +265,11 @@ def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
         .execute(
             text(
                 """
-            SELECT id, label, description, is_container, created_at, updated_at
-            FROM nodes
-            ORDER BY id
+            SELECT n.id, n.label, n.description, n.is_container,
+                   n.created_at, n.updated_at, e.parent_id
+            FROM nodes n
+            LEFT JOIN edges e ON e.child_id = n.id
+            ORDER BY n.id
             LIMIT :limit OFFSET :offset
             """
             ),
