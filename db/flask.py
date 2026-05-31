@@ -551,7 +551,7 @@ def update_tag(tag_id: int, fields: dict) -> int:
     """Update a tag's fields. Returns rowcount; raises ValueError on uniqueness conflicts."""
     invalid = fields.keys() - _UPDATABLE_TAG_FIELDS
     if invalid:
-        raise ValueError(f'non-updatable tag fields: {invalid}')
+        raise ValueError(f'non-updatable tag fields: {", ".join(sorted(invalid))}')
     set_clause = ', '.join(f'{k} = :{k}' for k in fields)
     try:
         with transactional():
