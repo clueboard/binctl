@@ -246,6 +246,20 @@ paths:
         "404":
           description: Tag not found
 
+  /v1/config:
+    get:
+      x-openapi-router-controller: routes
+      operationId: get_config
+      tags: [config]
+      summary: Get server configuration
+      responses:
+        "200":
+          description: Server configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerConfig"
+
   /v1/auth/login:
     post:
       x-openapi-router-controller: auth_operations
@@ -462,3 +476,11 @@ components:
       properties:
         token:
           type: string
+
+    ServerConfig:
+      type: object
+      required: [orphan_location]
+      properties:
+        orphan_location:
+          type: string
+          nullable: true
