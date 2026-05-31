@@ -81,13 +81,12 @@ class TestTagCreate(unittest.TestCase):
                 mock_sync.return_value = _mock_response()
                 import binctl as bc
 
-                with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='mytag', description='tag description'))):
+                with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='mytag'))):
                     bc._tag_create()
 
                 _, kwargs = mock_sync.call_args
                 self.assertIn('body', kwargs)
                 self.assertNotIn('json_body', kwargs)
-                self.assertEqual(kwargs['body'].description, 'tag description')
 
 
 class TestTagUpdate(unittest.TestCase):
@@ -96,13 +95,12 @@ class TestTagUpdate(unittest.TestCase):
             mock_sync.return_value = _mock_response()
             import binctl as bc
 
-            with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='renamed', description='details', tag_id='1'))):
+            with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='renamed', tag_id='1'))):
                 bc._tag_update()
 
             _, kwargs = mock_sync.call_args
             self.assertIn('body', kwargs)
             self.assertNotIn('json_body', kwargs)
-            self.assertEqual(kwargs['body'].description, 'details')
 
 
 class TestNodeDetach(unittest.TestCase):

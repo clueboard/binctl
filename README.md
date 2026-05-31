@@ -200,7 +200,7 @@ Nodes live in the `nodes` table:
 
 - `id` - BIGINT primary key
 - `label` - human-readable name
-- `description` - optional freeform text (Markdown recommended)
+- `description` - optional free text
 - `is_container` - `TRUE` if this node can contain children
 
 ### Edges
@@ -222,7 +222,6 @@ When you delete a container, any direct children can be reassigned by setting `O
 ### Tags
 
 Tags are stored in `tags` + `tag_node` for future filtering and categorization.
-Tag descriptions are optional freeform text, and Markdown is the recommended format.
 
 Tags are exposed via `binctl tag list|get|create|update`.
 

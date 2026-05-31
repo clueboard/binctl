@@ -254,7 +254,7 @@ def _tag_get():
 
 def _tag_create():
     client = _get_client()
-    body = TagCreate(name=cli.args.name, description=cli.args.description)
+    body = TagCreate(name=cli.args.name)
     response = post_tag_create.sync_detailed(client=client, body=body)
     _check_response(response, 'tag create')
     return response.parsed
@@ -269,12 +269,7 @@ def _tag_delete():
 
 def _tag_update():
     client = _get_client()
-    body_kwargs = {}
-    if cli.args.name is not None:
-        body_kwargs['name'] = cli.args.name
-    if cli.args.description is not None:
-        body_kwargs['description'] = cli.args.description
-    body = TagUpdate(**body_kwargs)
+    body = TagUpdate(name=cli.args.name)
     response = patch_tag_update.sync_detailed(client=client, tag_id=cli.args.tag_id, body=body)
     _check_response(response, f'tag {cli.args.tag_id}')
     return response.parsed
@@ -369,7 +364,6 @@ def node(cli):
 )
 @cli.argument('--tag-id', type=str, help='Tag ID (required for get/update/delete)')
 @cli.argument('--name', help='Tag name for create/update')
-@cli.argument('--description', help='Description for create/update', default=None)
 @cli.subcommand('Tag operations: list, get, create, update, delete.')
 def tag(cli):
     """binctl tag <action> [options]"""
@@ -397,8 +391,8 @@ def tag(cli):
         if cli.args.tag_id is None:
             cli.log.error('tag update requires --tag-id')
             raise SystemExit(1)
-        if cli.args.name is None and cli.args.description is None:
-            cli.log.error('tag update needs at least one field to change')
+        if not cli.args.name:
+            cli.log.error('tag update requires --name')
             raise SystemExit(1)
         _run_with_output('tag', 'update', _tag_update, _format_tag)
         return

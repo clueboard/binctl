@@ -92,19 +92,10 @@ def get_tag_detail(tag_id: str) -> Response:
 
 def post_tag_create() -> Response:
     data = _parse_json_body()
-    name = data.get('name')
-    if name is None:
-        return error(400, 'Missing required field: name')
-    if not name:
-        return error(400, 'Required field cannot be empty: name')
-    if len(name) > 255:
-        return error(400, 'name must be 255 characters or fewer')
-    description = data.get('description')
-    if description == '':
-        return error(400, 'description cannot be empty')
+    name = data['name']
 
     try:
-        tag_id = create_tag(name, description)
+        tag_id = create_tag(name)
     except ValueError as e:
         return error(409, str(e))
 
@@ -131,25 +122,10 @@ def delete_tag_endpoint(tag_id: str) -> Response:
 def patch_tag_update(tag_id: str) -> Response:
     tag_id_int = _decode_id(tag_id, 'tag_id')
     data = _parse_json_body()
-    fields = {}
-
-    if 'name' in data:
-        if not data['name']:
-            return error(400, 'name cannot be empty')
-        if len(data['name']) > 255:
-            return error(400, 'name must be 255 characters or fewer')
-        fields['name'] = data['name']
-
-    if 'description' in data:
-        if data['description'] == '':
-            return error(400, 'description cannot be empty')
-        fields['description'] = data['description']
-
-    if not fields:
-        return error(400, 'At least one updatable field is required')
+    name = data['name']
 
     try:
-        rowcount = update_tag(tag_id_int, fields)
+        rowcount = update_tag(tag_id_int, name)
     except ValueError as e:
         return error(409, str(e))
 

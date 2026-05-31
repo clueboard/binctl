@@ -4,16 +4,9 @@ class TestTagCreate:
         assert resp.status_code == 201
         body = resp.json()
         assert body['name'] == 'electronics'
-        assert body['description'] is None
         assert body['id'] is not None
         assert body['created_at'] is not None
         assert body['updated_at'] is not None
-
-    def test_create_tag_with_description(self, client, authed_headers):
-        resp = client.post('/v1/tags', json={'name': 'electronics', 'description': '# Markdown description'}, headers=authed_headers)
-        assert resp.status_code == 201
-        body = resp.json()
-        assert body['description'] == '# Markdown description'
 
     def test_create_duplicate(self, client, authed_headers):
         client.post('/v1/tags', json={'name': 'unique'}, headers=authed_headers)
@@ -84,19 +77,13 @@ class TestTagPatch:
         assert resp.status_code == 200
         assert resp.json()['name'] == 'newname'
 
-    def test_patch_description_only(self, client, make_tag, authed_headers):
-        tag_id = make_tag('oldname')
-        resp = client.patch(f'/v1/tags/{tag_id}', json={'description': 'Some details'}, headers=authed_headers)
-        assert resp.status_code == 200
-        assert resp.json()['description'] == 'Some details'
-
     def test_patch_rename_conflict(self, client, make_tag, authed_headers):
         make_tag('taken')
         tag_id = make_tag('other')
         resp = client.patch(f'/v1/tags/{tag_id}', json={'name': 'taken'}, headers=authed_headers)
         assert resp.status_code == 409
 
-    def test_patch_missing_fields(self, client, make_tag, authed_headers):
+    def test_patch_missing_name(self, client, make_tag, authed_headers):
         tag_id = make_tag('sometag')
         resp = client.patch(f'/v1/tags/{tag_id}', json={}, headers=authed_headers)
         assert resp.status_code == 400

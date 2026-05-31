@@ -99,8 +99,8 @@ def make_node(client, authed_headers):
 
 @pytest.fixture()
 def make_tag(client, authed_headers):
-    def _inner(name='test tag', **kwargs):
-        resp = client.post('/v1/tags', json={'name': name, **kwargs}, headers=authed_headers)
+    def _inner(name='test tag'):
+        resp = client.post('/v1/tags', json={'name': name}, headers=authed_headers)
         assert resp.status_code == 201, resp.json()
         return resp.json()['id']
 

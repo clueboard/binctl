@@ -77,7 +77,6 @@ def tag_row_to_dict(row: RowMapping) -> dict:
     return {
         'id': base62.encode(row['id']),
         'name': row['name'],
-        'description': row['description'],
         'created_at': iso(row['created_at']),
         'updated_at': iso(row['updated_at']),
     }
@@ -164,7 +163,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .execute(
             text(
                 """
-            SELECT t.id, t.name, t.description, t.created_at, t.updated_at
+            SELECT t.id, t.name, t.created_at, t.updated_at
             FROM tag_node tn
             JOIN tags t ON t.id = tn.tag_id
             WHERE tn.node_id = :id
@@ -475,7 +474,7 @@ def fetch_tag(tag_id: int) -> RowMapping | None:
     return (
         get_db()
         .execute(
-            text('SELECT id, name, description, created_at, updated_at FROM tags WHERE id = :id'),
+            text('SELECT id, name, created_at, updated_at FROM tags WHERE id = :id'),
             {'id': tag_id},
         )
         .mappings()
@@ -495,7 +494,7 @@ def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
         .execute(
             text(
                 """
-            SELECT id, name, description, created_at, updated_at
+            SELECT id, name, created_at, updated_at
             FROM tags
             ORDER BY name
             LIMIT :limit OFFSET :offset
@@ -530,39 +529,27 @@ def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
     )
 
 
-def create_tag(name: str, description: str | None = None) -> int:
+def create_tag(name: str) -> int:
     """Insert a new tag with *name* and return its id. Raises ValueError on duplicate name."""
     tag_id = new_id()
     try:
         with transactional():
-            get_db().execute(
-                text('INSERT INTO tags (id, name, description) VALUES (:id, :name, :description)'),
-                {'id': tag_id, 'name': name, 'description': description},
-            )
+            get_db().execute(text('INSERT INTO tags (id, name) VALUES (:id, :name)'), {'id': tag_id, 'name': name})
     except IntegrityError:
         raise ValueError(f"Tag with name '{name}' already exists")
     return tag_id
 
 
-_UPDATABLE_TAG_FIELDS = frozenset({'name', 'description'})
-
-
-def update_tag(tag_id: int, fields: dict) -> int:
-    """Update a tag's fields. Returns rowcount; raises ValueError on uniqueness conflicts."""
-    invalid = fields.keys() - _UPDATABLE_TAG_FIELDS
-    if invalid:
-        raise ValueError(f'non-updatable tag fields: {", ".join(sorted(invalid))}')
-    set_clause = ', '.join(f'{k} = :{k}' for k in fields)
+def update_tag(tag_id: int, name: str) -> int:
+    """Rename *tag_id* to *name*. Returns rowcount; raises ValueError on duplicate name."""
     try:
         with transactional():
             result = get_db().execute(
-                text(f'UPDATE tags SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
-                {**fields, 'id': tag_id},
+                text('UPDATE tags SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
+                {'name': name, 'id': tag_id},
             )
     except IntegrityError:
-        if 'name' in fields:
-            raise ValueError(f"Tag with name '{fields['name']}' already exists")
-        raise ValueError('Tag update violated database constraints')
+        raise ValueError(f"Tag with name '{name}' already exists")
     return result.rowcount
 
 
