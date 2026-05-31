@@ -16,7 +16,7 @@ class NodeUpdate:
     """
     Attributes:
         label (str | Unset):
-        description (None | str | Unset):
+        description (None | str | Unset): Optional freeform text for this node. Markdown is recommended.
         is_container (bool | Unset):
         parent_id (None | str | Unset):
         tag_ids (list[str] | Unset):

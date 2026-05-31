@@ -16,7 +16,7 @@ class NodeCreate:
     """
     Attributes:
         label (str):
-        description (None | str | Unset):
+        description (None | str | Unset): Optional freeform text for this node. Markdown is recommended.
         is_container (bool | Unset):  Default: False.
         parent_id (None | str | Unset):
         tag_ids (list[str] | Unset):

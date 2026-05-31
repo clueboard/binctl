@@ -345,6 +345,7 @@ components:
         description:
           type: string
           nullable: true
+          description: Optional freeform text for this node. Markdown is recommended.
         is_container:
           type: boolean
           default: false
@@ -367,6 +368,7 @@ components:
         description:
           type: string
           nullable: true
+          description: Optional freeform text for this node. Markdown is recommended.
         is_container:
           type: boolean
         parent_id:
@@ -388,6 +390,7 @@ components:
         description:
           type: string
           nullable: true
+          description: Optional freeform text for this node. Markdown is recommended.
         is_container:
           type: boolean
         created_at:
@@ -419,6 +422,7 @@ components:
         description:
           type: string
           nullable: true
+          description: Optional freeform text for this node. Markdown is recommended.
         is_container:
           type: boolean
         created_at:
@@ -436,14 +440,21 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+        description:
+          type: string
+          nullable: true
+          description: Optional freeform text for this tag. Markdown is recommended.
     TagUpdate:
       type: object
-      required: [name]
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 255
+        description:
+          type: string
+          nullable: true
+          description: Optional freeform text for this tag. Markdown is recommended.
 
     Tag:
       type: object
@@ -453,6 +464,10 @@ components:
           type: string
         name:
           type: string
+        description:
+          type: string
+          nullable: true
+          description: Optional freeform text for this tag. Markdown is recommended.
         created_at:
           type: string
           format: date-time

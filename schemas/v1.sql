@@ -32,6 +32,7 @@ CREATE TABLE edges (
 CREATE TABLE tags (
     id           BIGINT NOT NULL PRIMARY KEY,
     name         VARCHAR(255) NOT NULL UNIQUE,
+    description  TEXT,
     created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,4 +71,3 @@ CREATE TABLE tokens (
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (token_hash)
 );
-
