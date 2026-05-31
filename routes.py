@@ -1,6 +1,6 @@
 import logging
 
-from flask import Response, jsonify, request
+from flask import Response, current_app, jsonify, request
 from werkzeug.exceptions import BadRequest
 
 from db import base62
@@ -42,6 +42,11 @@ def _parse_json_body() -> dict:
     if data is None:
         raise BadRequest('Request body must be valid JSON')
     return data
+
+
+# Config endpoint
+def get_config() -> Response:
+    return jsonify({'orphan_location': current_app.config.get('ORPHAN_LOCATION')})
 
 
 # Tag endpoints
