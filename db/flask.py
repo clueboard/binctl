@@ -164,7 +164,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .execute(
             text(
                 """
-            SELECT t.id, t.name, t.created_at, t.updated_at
+            SELECT t.id, t.name, t.description, t.created_at, t.updated_at
             FROM tag_node tn
             JOIN tags t ON t.id = tn.tag_id
             WHERE tn.node_id = :id
