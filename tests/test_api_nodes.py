@@ -74,6 +74,7 @@ class TestNodeGet:
         assert body['parent_id'] == container_id
         assert len(body['children']) == 1
         assert body['children'][0]['id'] == grandchild_id
+        assert body['children'][0]['parent_id'] == child_id
         assert body['tags'][0]['name'] == 'storage'
 
     def test_get_not_found(self, client, authed_headers):
@@ -111,6 +112,16 @@ class TestNodeList:
         assert resp.status_code == 200
         body = resp.json()
         assert body['total'] == len(body['items'])
+
+    def test_list_includes_parent_id(self, client, make_node, authed_headers):
+        """Items in the node list must include parent_id."""
+        container_id = make_node('container', is_container=True)
+        child_id = make_node('child', parent_id=container_id)
+        resp = client.get('/v1/nodes', params={'limit': 100}, headers=authed_headers)
+        assert resp.status_code == 200
+        items = {item['id']: item for item in resp.json()['items']}
+        assert items[container_id]['parent_id'] is None
+        assert items[child_id]['parent_id'] == container_id
 
 
 class TestNodeDeleteUnauthenticated:

@@ -427,6 +427,9 @@ components:
         updated_at:
           type: string
           format: date-time
+        parent_id:
+          type: string
+          nullable: true
 
     TagCreate:
       type: object

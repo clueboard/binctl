@@ -11,6 +11,7 @@ from .node_child import NodeChild
 from .node_create import NodeCreate
 from .node_page import NodePage
 from .node_update import NodeUpdate
+from .server_config import ServerConfig
 from .tag import Tag
 from .tag_create import TagCreate
 from .tag_page import TagPage
@@ -28,6 +29,7 @@ __all__ = (
     "NodeCreate",
     "NodePage",
     "NodeUpdate",
+    "ServerConfig",
     "Tag",
     "TagCreate",
     "TagPage",
