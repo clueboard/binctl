@@ -1,7 +1,8 @@
 [project]
-name = "binctl"
+name = "binctl-server"
 version = "0.1.0"
-description = "Storage node and tag management server + CLI"
+description = "Graph-based storage inventory server and CLI"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "binctl-client",
@@ -20,12 +21,21 @@ postgresql = ["psycopg2-binary"]
 [project.scripts]
 binctl = "binctl:cli"
 
+[project.urls]
+Homepage = "https://github.com/clueboard/binctl"
+Repository = "https://github.com/clueboard/binctl"
+Issues = "https://github.com/clueboard/binctl/issues"
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["binctl", "web", "routes", "db", "auth", "auth_operations", "manage"]
+py-modules = ["binctl", "web", "routes", "auth", "auth_operations", "manage"]
+packages = ["db"]
+
+[tool.setuptools.package-data]
+db = ["v1.sql"]
 
 [dependency-groups]
 dev = [

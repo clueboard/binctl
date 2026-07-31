@@ -12,7 +12,7 @@ import db as _db  # noqa: E402
 from web import create_app  # noqa: E402
 
 # Absolute path to schema file
-_SCHEMA = Path(__file__).parent.parent / 'schemas' / 'v1.sql'
+_SCHEMA = Path(__file__).parent.parent / 'db' / 'v1.sql'
 
 # Shared in-memory SQLite engine (StaticPool so all connections share one DB)
 _sqlite_engine = create_engine(

@@ -4,6 +4,7 @@
 import getpass
 import os
 import sys
+from importlib.resources import files
 
 from dotenv import load_dotenv
 
@@ -12,8 +13,6 @@ load_dotenv()
 if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)
-
-from pathlib import Path  # noqa: E402
 
 import sqlalchemy  # noqa: E402
 from milc import cli  # noqa: E402
@@ -31,8 +30,7 @@ def main(cli):
 @cli.subcommand('Initialize the database schema.')
 def init_db(cli):
     """Apply the v1 SQL schema to the configured database."""
-    schema = Path(__file__).parent / 'schemas' / 'v1.sql'
-    sql = schema.read_text()
+    sql = files('db').joinpath('v1.sql').read_text()
     with db.engine.connect() as conn:
         for stmt in sql.split(';'):
             stmt = stmt.strip()

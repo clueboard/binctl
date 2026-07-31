@@ -52,7 +52,7 @@ CREATE TABLE tag_node (
 CREATE INDEX idx_tag_node_node_id ON tag_node (node_id);
 
 CREATE TABLE users (
-    id            BIGINT NOT NULL PRIMARY KEY,
+    id           BIGINT NOT NULL PRIMARY KEY,
     username      VARCHAR(255) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -70,4 +70,3 @@ CREATE TABLE tokens (
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (token_hash)
 );
-

@@ -9,6 +9,17 @@ Instead of thinking in terms of "SKUs" and "stock levels", `binctl` models your 
 
 It's backed by a Flask API with a CLI frontend.
 
+## Install from PyPI
+
+```bash
+pip install binctl-server
+```
+
+Install database drivers only when needed:
+
+- **MySQL:** `pip install 'binctl-server[mysql]'`
+- **PostgreSQL:** `pip install 'binctl-server[postgresql]'`
+
 ## Quickstart (SQLite, local dev)
 
 The fastest path to a running system. Requires Python 3.11+. Run each block in your terminal:
@@ -57,8 +68,8 @@ binctl --token $TOKEN node list
    output is ignored and must not be committed.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
-   - **MySQL:** `pip install pymysql`  or  `pip install 'binctl[mysql]'`
-   - **PostgreSQL:** `pip install psycopg2-binary`  or  `pip install 'binctl[postgresql]'`
+   - **MySQL:** `pip install pymysql`  or  `pip install 'binctl-server[mysql]'`
+   - **PostgreSQL:** `pip install psycopg2-binary`  or  `pip install 'binctl-server[postgresql]'`
    - **SQLite** — no extra driver needed, skip this step.
 
 2. Copy `.env.example` and set your database URL:
@@ -192,6 +203,19 @@ pytest
 ruff check
 ty check
 ```
+
+## Publishing releases
+
+In GitHub Actions, run the `Publish to PyPI` workflow and select the `patch`,
+`minor`, or `major` version increment. The workflow runs from `main`, uses
+`uv version --bump` to update `pyproject.toml` and `uv.lock`, commits the new
+version, creates and pushes its matching `v<version>` tag, and publishes that
+version to PyPI.
+
+Before the first release, configure PyPI Trusted Publishing for
+`clueboard/binctl` with workflow filename `publish.yml` and environment name
+`pypi`. The workflow uses GitHub Actions OIDC, so it does not require a PyPI
+API token or repository secret.
 
 ---
 
