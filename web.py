@@ -1,3 +1,4 @@
+import importlib.resources
 import logging
 import logging.config
 import os
@@ -7,6 +8,11 @@ from connexion.middleware import MiddlewarePosition
 from dotenv import load_dotenv
 from flask import g, jsonify
 from starlette.middleware.cors import CORSMiddleware
+
+# openapi.yaml lives in the binctl_spec package (rather than next to this module) so it can be
+# shipped as package data — plain top-level modules like this one can't carry package data of
+# their own, so a spec file placed next to web.py would go missing from the installed wheel.
+_OPENAPI_SPEC = importlib.resources.files('binctl_spec') / 'openapi.yaml'
 
 _LOGGING_CONFIG = {
     'version': 1,
@@ -63,10 +69,10 @@ def create_app():
     except ValueError:
         raise ValueError(f'SESSION_LIFETIME_DAYS must be a positive integer (got {_session_lifetime_raw!r})')
 
-    cx_app = connexion.App(__name__, specification_dir='.')
+    cx_app = connexion.App(__name__)
     cx_app.app.config['SESSION_LIFETIME_DAYS'] = session_lifetime_days
     cx_app.app.config['ORPHAN_LOCATION'] = os.environ.get('ORPHAN_LOCATION') or None  # `or None` allows the user to set ORPHAN_LOCATION to an empty string.
-    cx_app.add_api('openapi.yaml', strict_validation=True, validate_responses=True)
+    cx_app.add_api(_OPENAPI_SPEC, strict_validation=True, validate_responses=True)
     cx_app.add_middleware(
         CORSMiddleware,
         position=MiddlewarePosition.BEFORE_EXCEPTION,

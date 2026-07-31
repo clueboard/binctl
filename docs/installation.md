@@ -24,8 +24,8 @@ Install database drivers only when needed:
    ```
 
    `binctl-client` is installed from PyPI. `genclient.sh` uses `uvx` to generate a local client
-   from `openapi.yaml` as an API-contract check; its `binctl-client/` output is ignored and must
-   not be committed.
+   from `binctl_spec/openapi.yaml` as an API-contract check; its `binctl-client/` output is
+   ignored and must not be committed.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
 

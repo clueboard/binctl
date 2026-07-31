@@ -32,10 +32,14 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["binctl", "web", "routes", "auth", "auth_operations", "manage"]
-packages = ["db"]
+packages = ["db", "binctl_spec"]
 
 [tool.setuptools.package-data]
 db = ["v1.sql"]
+binctl_spec = ["openapi.yaml"]
+
+[tool.setuptools.data-files]
+"share/binctl/systemd" = ["systemd/binctl-server.service"]
 
 [dependency-groups]
 dev = [

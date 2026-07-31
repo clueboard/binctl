@@ -64,7 +64,7 @@ binctl --token $TOKEN node list
    pip install -e .
    ```
    `binctl-client` is installed from PyPI. `genclient.sh` uses `uvx` to generate a
-   local client from `openapi.yaml` as an API-contract check; its `binctl-client/`
+   local client from `binctl_spec/openapi.yaml` as an API-contract check; its `binctl-client/`
    output is ignored and must not be committed.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
@@ -161,9 +161,11 @@ binctl --token $TOKEN node update --node-id yR7nTs2CCE --no-parent
 
 ## Running as a service
 
-A systemd unit file is shipped at [`systemd/binctl-server.service`](systemd/binctl-server.service)
-for running the server persistently on a Linux host. Copy it to `/etc/systemd/system/`, adjust the
-paths/user, then `systemctl daemon-reload && systemctl enable --now binctl-server`. See
+A systemd unit file ships with `binctl-server` for running the server persistently on a Linux
+host: at [`systemd/binctl-server.service`](systemd/binctl-server.service) in this repo, or at
+`<venv>/share/binctl/systemd/binctl-server.service` if installed from PyPI. Copy it to
+`/etc/systemd/system/`, adjust the paths/user, then
+`systemctl daemon-reload && systemctl enable --now binctl-server`. See
 [Server administration](docs/server-admin.md#running-as-a-systemd-service) for the full walkthrough.
 
 ## Security

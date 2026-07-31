@@ -34,10 +34,14 @@ This binds to `http://localhost:5000` by default. Pass `--base-url http://localh
 
 ## Running as a systemd service
 
-A ready-to-use unit file is shipped in the repository at
-[`systemd/binctl-server.service`](https://github.com/clueboard/binctl/blob/main/systemd/binctl-server.service).
-It's included in the sdist, so it's available anywhere the project source is (PyPI sdist, git
-checkout, etc.).
+A ready-to-use unit file is shipped as part of `binctl-server`:
+
+- **Installed from PyPI** (`pip install binctl-server`): it's placed at
+  `<venv>/share/binctl/systemd/binctl-server.service` inside whatever virtual environment you
+  installed into, e.g. `/srv/binctl/.venv/share/binctl/systemd/binctl-server.service`.
+- **From a git checkout**: it's at
+  [`systemd/binctl-server.service`](https://github.com/clueboard/binctl/blob/main/systemd/binctl-server.service)
+  in the repo root (also included in the sdist).
 
 1. Set up the project on the server, e.g. under `/srv/binctl` — follow
    [Installation](installation.md) to create the virtual environment, install `binctl-server`
@@ -57,7 +61,7 @@ checkout, etc.).
    from `/srv/binctl`:
 
    ```bash
-   sudo cp /srv/binctl/systemd/binctl-server.service /etc/systemd/system/binctl-server.service
+   sudo cp /srv/binctl/.venv/share/binctl/systemd/binctl-server.service /etc/systemd/system/binctl-server.service
    sudo $EDITOR /etc/systemd/system/binctl-server.service
    ```
 

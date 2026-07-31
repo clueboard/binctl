@@ -11,7 +11,7 @@ Type=simple
 User=binctl
 Group=binctl
 
-# Directory containing web.py, manage.py, openapi.yaml, and (optionally) .env.
+# Directory containing web.py, manage.py, and (optionally) .env.
 # This is normally the project checkout / install directory, e.g. the result of
 # `pip install --target /srv/binctl binctl-server` or a git clone with the venv inside it.
 WorkingDirectory=/srv/binctl
