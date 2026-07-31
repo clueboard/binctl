@@ -102,7 +102,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "binctl-client", editable = "binctl-client" },
+    { name = "binctl-client" },
     { name = "connexion", extras = ["flask"], specifier = ">=3.3" },
     { name = "gunicorn", specifier = ">=21.0" },
     { name = "milc" },
@@ -126,18 +126,15 @@ dev = [
 [[package]]
 name = "binctl-client"
 version = "1.0.0"
-source = { editable = "binctl-client" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
     { name = "httpx" },
     { name = "python-dateutil" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "attrs", specifier = ">=22.2.0" },
-    { name = "httpx", specifier = ">=0.23.0,<0.29.0" },
-    { name = "python-dateutil", specifier = ">=2.8.0,<3.0.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/30/e0/e71303ef6a64efca57f9794e0d9d766a355d2c9d9fa517c004f0e2b6f0d5/binctl_client-1.0.0.tar.gz", hash = "sha256:ef1c2b733dc60936cb2c31067496cacc9492d5d1e97df662ff5e270d62d6f970", size = 13156, upload-time = "2026-06-07T23:32:25.004Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/c2/48a0eca70d62b7c8a5807b70e5f746c51456418d4df04c4d67ab54a97785/binctl_client-1.0.0-py3-none-any.whl", hash = "sha256:e5d0a92dc3fd338b451e0b82587ad98dbc1b6dbcf1517c85f09d92fa38724f58", size = 35462, upload-time = "2026-06-07T23:32:23.702Z" },
 ]
 
 [[package]]

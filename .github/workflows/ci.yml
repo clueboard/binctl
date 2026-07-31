@@ -15,16 +15,10 @@ jobs:
         with:
           enable-cache: true
 
+      - run: ./genclient.sh
       - run: uv sync
 
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run ty check
       - run: uv run pytest
-      - run: uv run sh ./genclient.sh
-      - run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git status --short
-            git diff
-            exit 1
-          fi

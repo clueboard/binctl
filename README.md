@@ -14,43 +14,47 @@ It's backed by a Flask API with a CLI frontend.
 The fastest path to a running system. Requires Python 3.11+. Run each block in your terminal:
 
 ```bash
-# 1. Create and activate a virtual environment
+# 1. Generate the ignored API client
+./genclient.sh
+
+# 2. Create and activate a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# 2. Install dependencies — binctl-client is a bundled local package
-pip install -e ./binctl-client
+# 3. Install dependencies — binctl-client is installed from PyPI
 pip install -e .
 
-# 3. Configure the database — copy .env.example and uncomment the SQLite line
+# 4. Configure the database — copy .env.example and uncomment the SQLite line
 cp .env.example .env
 # In .env, uncomment: DATABASE_URL=sqlite:///binctl.db
 
-# 4. Initialize the database
+# 5. Initialize the database
 python manage.py init-db
 
-# 5. Create a user and get a token
+# 6. Create a user and get a token
 python manage.py create-user alice --token
 # → prints something like: token: abc123...
 export TOKEN=<paste token here>
 
-# 6. Start the server (keep this terminal open, or run it in the background)
+# 7. Start the server (keep this terminal open, or run it in the background)
 uvicorn web:create_app --factory
 
-# 7. In another terminal (with .venv activated), verify it works
+# 8. In another terminal (with .venv activated), verify it works
 binctl --token $TOKEN node list
 ```
 
 ## Setup
 
-1. Create and activate a virtual environment, then install dependencies:
+1. Generate the API client, then create and activate a virtual environment and install dependencies:
    ```
+   ./genclient.sh
    python3 -m venv .venv
    source .venv/bin/activate   # Windows: .venv\Scripts\activate
-   pip install -e ./binctl-client
    pip install -e .
    ```
-   `binctl-client` is a local workspace package — it must be installed before `binctl`.
+   `binctl-client` is installed from PyPI. `genclient.sh` uses `uvx` to generate a
+   local client from `openapi.yaml` as an API-contract check; its `binctl-client/`
+   output is ignored and must not be committed.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
    - **MySQL:** `pip install pymysql`  or  `pip install 'binctl[mysql]'`
@@ -159,11 +163,16 @@ binctl --token $TOKEN node update --node-id yR7nTs2CCE --no-parent
 
 ## Development (uv)
 
-Contributors can use [uv](https://docs.astral.sh/uv/) for a faster workflow. `uv sync` handles `binctl-client` automatically via the workspace config in `pyproject.toml`.
+Contributors can use [uv](https://docs.astral.sh/uv/) for a faster workflow. Generate the
+ignored local client first, then install the published `binctl-client` package and other
+development dependencies.
 
 ```bash
 # Install uv (skip if already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Generate the client from the API contract
+./genclient.sh
 
 # Install all dependencies including dev tools
 uv sync
@@ -228,8 +237,7 @@ Tags are exposed via `binctl tag list|get|create|update`.
 ## Troubleshooting
 
 **`ModuleNotFoundError: No module named 'binctl_client'`**
-`binctl-client` is a local package — it is not on PyPI and must be installed separately.
-Run `pip install -e ./binctl-client` before `pip install -e .`, or use `uv sync` (see Development above).
+Reinstall the project dependencies with `pip install -e .` or `uv sync`.
 
 **`Connection refused` / `Failed to connect` when running `binctl` commands**
 The server is not running. Start it with `uvicorn web:create_app --factory` (binds to
