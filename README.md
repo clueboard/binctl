@@ -159,6 +159,13 @@ binctl --token $TOKEN node update --node-id yR7nTs2CCE --parent-id <other-shelf-
 binctl --token $TOKEN node update --node-id yR7nTs2CCE --no-parent
 ```
 
+## Running as a service
+
+A systemd unit file is shipped at [`systemd/binctl-server.service`](systemd/binctl-server.service)
+for running the server persistently on a Linux host. Copy it to `/etc/systemd/system/`, adjust the
+paths/user, then `systemctl daemon-reload && systemctl enable --now binctl-server`. See
+[Server administration](docs/server-admin.md#running-as-a-systemd-service) for the full walkthrough.
+
 ## Security
 
 `binctl` is not designed to be exposed to the internet. It is intended for use on trusted local or private networks. Security bugs will be fixed when found, but the threat model assumes a trusted network environment.

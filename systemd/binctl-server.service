@@ -1,0 +1,62 @@
+[Unit]
+Description=binctl inventory server
+Documentation=https://github.com/clueboard/binctl
+After=network.target
+# Uncomment (and adjust) if the database runs on this same host:
+# After=network.target mysqld.service
+# After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=binctl
+Group=binctl
+
+# Directory containing web.py, manage.py, openapi.yaml, and (optionally) .env.
+# This is normally the project checkout / install directory, e.g. the result of
+# `pip install --target /srv/binctl binctl-server` or a git clone with the venv inside it.
+WorkingDirectory=/srv/binctl
+
+# Path to uvicorn inside the virtual environment used to install binctl-server.
+ExecStart=/srv/binctl/.venv/bin/uvicorn web:create_app --factory --host 0.0.0.0 --port 5000
+
+Restart=on-failure
+RestartSec=5
+
+# ---------------------------------------------------------------------------
+# Configuration
+#
+# binctl loads a .env file from WorkingDirectory automatically, so if
+# /srv/binctl/.env already has these set, you don't need to repeat them here.
+# Uncomment EnvironmentFile below to load it explicitly via systemd instead,
+# or uncomment individual Environment= lines to override/replace it. Values
+# set here take precedence over the .env file.
+# ---------------------------------------------------------------------------
+
+# EnvironmentFile=/srv/binctl/.env
+
+# --- Database (required: set exactly one DATABASE_URL) ---
+# Environment=DATABASE_URL=sqlite:///srv/binctl/binctl.db
+# Environment=DATABASE_URL=mysql+pymysql://user:password@localhost/binctl
+# Environment=DATABASE_URL=postgresql+psycopg2://user:password@localhost/binctl
+
+# --- CORS (required for browser-based clients) ---
+# Environment=CORS_ORIGINS=https://example.com
+# Environment=CORS_MAX_AGE=600
+
+# --- Sessions ---
+# Environment=SESSION_LIFETIME_DAYS=30
+
+# --- Orphan handling ---
+# Environment=ORPHAN_LOCATION=Lost and Found
+
+# ---------------------------------------------------------------------------
+# Hardening (optional, safe defaults for a single-purpose service account)
+# ---------------------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/binctl
+
+[Install]
+WantedBy=multi-user.target
