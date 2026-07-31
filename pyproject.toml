@@ -45,6 +45,10 @@ dev = [
     "pytest-timeout>=2.3",
     "ruff>=0.5",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+]
 
 [tool.ruff]
 line-length = 160

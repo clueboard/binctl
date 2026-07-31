@@ -1,0 +1,50 @@
+site_name: binctl
+site_description: A tiny graph-based inventory system for people with too many bins, boxes, and shelves.
+repo_name: clueboard/binctl
+repo_url: https://github.com/clueboard/binctl
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Concepts: concepts.md
+  - CLI reference: cli.md
+  - Server administration: server-admin.md
+  - Development: development.md
+  - Security: security.md
+  - Troubleshooting: troubleshooting.md
