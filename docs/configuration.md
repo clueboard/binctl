@@ -1,8 +1,21 @@
 # Configuration
 
-Configuration is provided via environment variables. Both the server and `binctl-manage` load a
-`.env` file in the project root automatically — no manual `export` needed (though you can still
-export variables directly if you prefer).
+The server, `binctl-manage`, and `binctl` read system-wide defaults from `/etc/binctl.conf`, then
+read the platform-specific user configuration file. Matching user settings override system
+settings. Passing `--config-file <path>` bypasses both defaults and reads only that file.
+
+The server and `binctl-manage` also load a `.env` file in the project root automatically. Exported
+environment variables and `.env` settings override file-based server settings.
+
+Configuration files use INI syntax. For example:
+
+```ini
+[general]
+database_url = sqlite:////var/lib/binctl/binctl.db
+cors_origins = https://inventory.example.com
+base_url = https://inventory.example.com
+token = your-client-token
+```
 
 Copy the example file to get started:
 

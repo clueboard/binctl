@@ -7,15 +7,19 @@ import sys
 from importlib.resources import files
 
 from dotenv import load_dotenv
+from milc import cli
 
 load_dotenv()
+cli.milc_options(name='binctl', config_file='/etc/binctl.conf')
+
+if not os.environ.get('DATABASE_URL') and cli.config.general.database_url:
+    os.environ['DATABASE_URL'] = str(cli.config.general.database_url)
 
 if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)
 
 import sqlalchemy
-from milc import cli
 
 from . import db
 

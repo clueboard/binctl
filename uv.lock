@@ -146,7 +146,7 @@ requires-dist = [
     { name = "connexion", extras = ["flask", "swagger-ui"], specifier = ">=3.3" },
     { name = "gunicorn", specifier = ">=21.0" },
     { name = "httpx2", specifier = ">=2.0" },
-    { name = "milc" },
+    { name = "milc", specifier = ">=2.1" },
     { name = "psycopg2-binary", marker = "extra == 'postgresql'" },
     { name = "pymysql", marker = "extra == 'mysql'" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
@@ -702,7 +702,7 @@ wheels = [
 
 [[package]]
 name = "milc"
-version = "1.11.0"
+version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "argcomplete" },
@@ -713,9 +713,9 @@ dependencies = [
     { name = "types-colorama" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/3d/073e200208969f0c7ece6690ec84bf2375aa39a1bf92694a851d09aaaeb6/milc-1.11.0.tar.gz", hash = "sha256:ae694b94c5cb18b49661003f89d8dbd46f8ff025769a37c098dc6be9214a99cd", size = 35081, upload-time = "2026-04-17T21:47:27.458Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/42/87/6d308b957ff5a89fa7df4f3e93a762d2af9f6b74c61acad1ee65dfd781c8/milc-2.1.0.tar.gz", hash = "sha256:a496efffa49f38c84e069646248d4141e2c60bf91a8d1c7fd0945c02863e5302", size = 42680, upload-time = "2026-08-01T19:07:32.108Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/11/ada48967450964855958e907fe8bb99dd62910edc26f50486f613b13f458/milc-1.11.0-py3-none-any.whl", hash = "sha256:f46984f9cbc85343a9bc197477e6cfb7aca88317822e821a4f4a4b2376f540d6", size = 31196, upload-time = "2026-04-17T21:47:26.224Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/94/cd4c5c4b95e0af45cf224b9f0cb8c65d03f5b1911e09a69f2f4014b91e0d/milc-2.1.0-py3-none-any.whl", hash = "sha256:016fb1349ecccd002e6bbeaf8a204260ccc28992f26e11fd685c8a52cc5f5027", size = 35057, upload-time = "2026-08-01T19:07:31.08Z" },
 ]
 
 [[package]]

@@ -26,6 +26,8 @@ from binctl_client.models import NodeCreate, NodeUpdate, TagCreate, TagUpdate
 from binctl_client.types import Response
 from milc import cli
 
+cli.milc_options(name='binctl', config_file='/etc/binctl.conf')
+
 
 def _get_client() -> Client:
     """Construct an API client from config/args."""
@@ -91,7 +93,7 @@ def _format_tag(action, result) -> str:
 
 
 def _run_with_output(resource, action, fn, formatter):
-    if not cli.args_passed['general']['verbose']:
+    if cli.config_source.general.verbose != 'argument':
         logging.getLogger('httpx').setLevel(logging.WARNING)
         logging.getLogger('httpcore').setLevel(logging.WARNING)
 
@@ -128,29 +130,14 @@ def _check_response(response: Response, label: str):
 # ---------------------------------------------------------------------------
 
 
-@cli.argument(
-    '--base-url',
-    default='http://localhost:5000',
-    help='Base URL for the binctl API (e.g. http://localhost:5000)',
-)
+@cli.argument('--base-url', default='http://localhost:5000', help='Base URL for the binctl API (e.g. http://localhost:5000)')
 @cli.argument('--token', default=None, help='Bearer token for authentication')
 @cli.argument('--username', default=None, help='Username for login-based authentication')
-@cli.argument(
-    '--password',
-    default=None,
-    help='Password for login-based authentication. WARNING: visible in process listings (ps, top). Prefer --token for production use.',
-)
-@cli.argument(
-    '-o',
-    '--output',
-    choices=['text', 'json'],
-    default='text',
-    help='Output format: text (human-friendly) or json (raw JSON, no spinner)',
-)
+@cli.argument('--password', default=None, help='Password for login-based authentication. WARNING: visible in process listings (ps, top). Prefer --token for production use.')
+@cli.argument('-o', '--output', choices=['text', 'json'], default='text', help='Output format: text (human-friendly) or json (raw JSON, no spinner)')
 @cli.entrypoint('binctl: manage storage nodes and tags.')
 def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
-    # If the user runs just `binctl`, print usage.
     cli.print_usage()
 
 
@@ -213,7 +200,7 @@ def _node_update():
         body_kwargs['label'] = cli.args.label
     if cli.args.description is not None:
         body_kwargs['description'] = cli.args.description
-    if cli.args_passed['node']['is_container']:
+    if cli.config_source.node.is_container == 'argument':
         body_kwargs['is_container'] = cli.args.is_container
     if cli.args.parent_id is not None:
         body_kwargs['parent_id'] = cli.args.parent_id
@@ -339,7 +326,7 @@ def node(cli):
                     cli.args.tag_id,
                 )
             )
-            and not cli.args_passed['node']['is_container']
+            and cli.config_source.node.is_container != 'argument'
         ):
             cli.log.error('node update needs at least one field to change')
             raise SystemExit(1)

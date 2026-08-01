@@ -8,7 +8,10 @@ import connexion
 from connexion.middleware import MiddlewarePosition
 from dotenv import load_dotenv
 from flask import g, jsonify
+from milc import cli
 from starlette.middleware.cors import CORSMiddleware
+
+cli.milc_options(name='binctl', config_file='/etc/binctl.conf')
 
 # openapi.yaml ships as package data alongside this module (see [tool.setuptools.package-data]
 # in pyproject.toml) so it's included in the installed wheel.
@@ -50,20 +53,32 @@ def create_app():
     load_dotenv()
     logging.config.dictConfig(_LOGGING_CONFIG)
 
-    cors_origins_raw = os.environ.get('CORS_ORIGINS', '')
+    def setting(name, default=None):
+        """Read an environment override, then the merged MILC configuration."""
+        env_value = os.environ.get(name.upper())
+        if env_value is not None:
+            return env_value
+        config_value = getattr(cli.config.general, name.lower())
+        return default if config_value is None else config_value
+
+    database_url = setting('DATABASE_URL')
+    if database_url:
+        os.environ['DATABASE_URL'] = str(database_url)
+
+    cors_origins_raw = str(setting('CORS_ORIGINS', ''))
     if cors_origins_raw.strip() == '*':
         raise ValueError("CORS_ORIGINS='*' is not allowed; specify explicit origins")
     allow_origins = [o.strip() for o in cors_origins_raw.split(',') if o.strip()]
     if not allow_origins:
         logging.warning('CORS_ORIGINS is empty. Since allow_credentials=True, all cross-origin credentialed requests will be rejected.')
 
-    _cors_max_age_raw = os.environ.get('CORS_MAX_AGE', '600')
+    _cors_max_age_raw = str(setting('CORS_MAX_AGE', '600'))
     try:
         max_age = int(_cors_max_age_raw)
     except ValueError:
         raise ValueError(f'CORS_MAX_AGE must be an integer (got {_cors_max_age_raw!r})')
 
-    _session_lifetime_raw = os.environ.get('SESSION_LIFETIME_DAYS', '30')
+    _session_lifetime_raw = str(setting('SESSION_LIFETIME_DAYS', '30'))
     try:
         session_lifetime_days = int(_session_lifetime_raw)
         if session_lifetime_days <= 0:
@@ -73,7 +88,7 @@ def create_app():
 
     cx_app = connexion.App(__name__)
     cx_app.app.config['SESSION_LIFETIME_DAYS'] = session_lifetime_days
-    cx_app.app.config['ORPHAN_LOCATION'] = os.environ.get('ORPHAN_LOCATION') or None  # `or None` allows the user to set ORPHAN_LOCATION to an empty string.
+    cx_app.app.config['ORPHAN_LOCATION'] = setting('ORPHAN_LOCATION') or None  # `or None` allows the user to set ORPHAN_LOCATION to an empty string.
     cx_app.add_api(_OPENAPI_SPEC, strict_validation=True, validate_responses=True)
     cx_app.add_middleware(
         CORSMiddleware,

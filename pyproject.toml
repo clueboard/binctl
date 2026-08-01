@@ -9,7 +9,7 @@ dependencies = [
     "connexion[flask,swagger-ui]>=3.3",
     "httpx2>=2.0",
     "gunicorn>=21.0",
-    "milc",
+    "milc>=2.1",
     "sqlalchemy>=2.0",
     "python-dotenv>=1.2.2",
 ]
