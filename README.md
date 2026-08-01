@@ -200,6 +200,7 @@ uv sync
 # Run checks
 uv run pytest
 uv run ruff check
+uv run ruff format --check
 uv run ty check
 ```
 
@@ -210,6 +211,7 @@ The following must pass before merging (run with the venv activated):
 ```
 pytest
 ruff check
+ruff format --check
 ty check
 ```
 

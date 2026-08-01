@@ -9,17 +9,19 @@ def __getattr__(name: str) -> Any:
     if name == 'direct':
         if neither_module_imported:
             from . import direct
+
             module_dict['direct'] = direct
         elif 'flask' in module_dict:
-            raise AttributeError("Only one of `direct` and `flask` can be used!")
+            raise AttributeError('Only one of `direct` and `flask` can be used!')
         return module_dict['direct']
 
     elif name == 'flask':
         if neither_module_imported:
             from . import flask
+
             module_dict['flask'] = flask
         elif 'direct' in module_dict:
-            raise AttributeError("Only one of `direct` and `flask` can be used!")
+            raise AttributeError('Only one of `direct` and `flask` can be used!')
         return module_dict['flask']
 
     elif name in module_dict:

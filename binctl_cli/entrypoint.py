@@ -133,7 +133,11 @@ def _check_response(response: Response, label: str):
 @cli.argument('--base-url', default='http://localhost:5000', help='Base URL for the binctl API (e.g. http://localhost:5000)')
 @cli.argument('--token', default=None, help='Bearer token for authentication')
 @cli.argument('--username', default=None, help='Username for login-based authentication')
-@cli.argument('--password', default=None, help='Password for login-based authentication. WARNING: visible in process listings (ps, top). Prefer --token for production use.')
+@cli.argument(
+    '--password',
+    default=None,
+    help='Password for login-based authentication. WARNING: visible in process listings (ps, top). Prefer --token for production use.',
+)
 @cli.argument('-o', '--output', choices=['text', 'json'], default='text', help='Output format: text (human-friendly) or json (raw JSON, no spinner)')
 @cli.entrypoint('binctl: manage storage nodes and tags.')
 def main(cli):

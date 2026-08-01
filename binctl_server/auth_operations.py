@@ -1,5 +1,5 @@
-"""auth_operations: API handlers for various authentication related endpoints.
-"""
+"""auth_operations: API handlers for various authentication related endpoints."""
+
 import connexion
 from connexion.exceptions import Unauthorized
 from sqlalchemy import text
