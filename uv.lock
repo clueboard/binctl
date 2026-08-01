@@ -110,7 +110,7 @@ name = "binctl-server"
 version = "1.0.5"
 source = { editable = "." }
 dependencies = [
-    { name = "connexion", extra = ["flask"] },
+    { name = "connexion", extra = ["flask", "swagger-ui"] },
     { name = "gunicorn" },
     { name = "httpx2" },
     { name = "milc" },
@@ -143,7 +143,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "connexion", extras = ["flask"], specifier = ">=3.3" },
+    { name = "connexion", extras = ["flask", "swagger-ui"], specifier = ">=3.3" },
     { name = "gunicorn", specifier = ">=21.0" },
     { name = "httpx2", specifier = ">=2.0" },
     { name = "milc" },
@@ -323,6 +323,9 @@ wheels = [
 flask = [
     { name = "a2wsgi" },
     { name = "flask", extra = ["async"] },
+]
+swagger-ui = [
+    { name = "swagger-ui-bundle" },
 ]
 
 [[package]]
@@ -1450,6 +1453,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/81/69/17425771797c36cded50b7fe44e850315d039f28b15901ab44839e70b593/starlette-1.0.0.tar.gz", hash = "sha256:6a4beaf1f81bb472fd19ea9b918b50dc3a77a6f2e190a12954b25e6ed5eea149", size = 2655289, upload-time = "2026-03-22T18:29:46.779Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/c9/584bc9651441b4ba60cc4d557d8a547b5aff901af35bda3a4ee30c819b82/starlette-1.0.0-py3-none-any.whl", hash = "sha256:d3ec55e0bb321692d275455ddfd3df75fff145d009685eb40dc91fc66b03d38b", size = 72651, upload-time = "2026-03-22T18:29:45.111Z" },
+]
+
+[[package]]
+name = "swagger-ui-bundle"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jinja2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/01/e6/d8ae21087a42627c2a04a738c947825b78c26b18595704b94bd3227197a2/swagger_ui_bundle-1.1.0.tar.gz", hash = "sha256:20673c3431c8733d5d1615ecf79d9acf30cff75202acaf21a7d9c7f489714529", size = 2599741, upload-time = "2023-11-01T19:58:17.397Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a2/66/8fb11445940bde7ca328d6aa23dd36b6056197d862f4bd6bb51c820c50e5/swagger_ui_bundle-1.1.0-py3-none-any.whl", hash = "sha256:f7526f7bb99923e10594c54247265839bec97e96b0438561ac86faf40d40dd57", size = 2626591, upload-time = "2023-11-01T19:58:15.366Z" },
 ]
 
 [[package]]
