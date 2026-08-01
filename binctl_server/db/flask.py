@@ -60,6 +60,11 @@ def iso(dt: datetime | str | None) -> str | None:
     return dt.isoformat()
 
 
+def db_bool(value: bool | int) -> int:
+    """Represent a boolean for the shared INTEGER-backed SQL schema."""
+    return 1 if value else 0
+
+
 def node_row_to_dict(row: RowMapping) -> dict:
     """Serialize a nodes row to a plain dict suitable for JSON responses."""
     result = {
@@ -302,7 +307,7 @@ def create_node(
                 VALUES (:id, :label, :description, :is_container)
                 """
             ),
-            {'id': node_id, 'label': label, 'description': description, 'is_container': is_container},
+            {'id': node_id, 'label': label, 'description': description, 'is_container': db_bool(is_container)},
         )
         if parent_id is not None:
             ensure_parent_is_valid(parent_id)
@@ -324,9 +329,12 @@ def update_node_fields(node_id: int, fields: dict) -> int:
     if invalid:
         raise ValueError(f'non-updatable node fields: {invalid}')
     set_clause = ', '.join(f'{k} = :{k}' for k in fields)
+    parameters = {**fields, 'id': node_id}
+    if 'is_container' in parameters:
+        parameters['is_container'] = db_bool(parameters['is_container'])
     result = get_db().execute(
         text(f'UPDATE nodes SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
-        {**fields, 'id': node_id},
+        parameters,
     )
     return result.rowcount
 
