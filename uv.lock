@@ -107,7 +107,7 @@ wheels = [
 
 [[package]]
 name = "binctl-server"
-version = "1.0.5"
+version = "1.0.6"
 source = { editable = "." }
 dependencies = [
     { name = "connexion", extra = ["flask", "swagger-ui"] },
