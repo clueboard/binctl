@@ -8,8 +8,7 @@ import pytest  # noqa: E402
 from sqlalchemy import create_engine, event, text  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
-from binctl_server import db as _db  # noqa: E402
-from binctl_server.web import create_app  # noqa: E402
+from binctl_server.db import engine as _engine  # noqa: E402
 
 # Absolute path to schema file
 _SCHEMA = Path(__file__).parent.parent / 'binctl_server' / 'db' / 'v1.sql'
@@ -43,7 +42,11 @@ with _sqlite_engine.connect() as _conn:
     _conn.commit()
 
 # Redirect db module to use our SQLite engine
-_db.engine = _sqlite_engine
+_engine.engine = _sqlite_engine
+
+# Import the application only after replacing the engine. Application database
+# modules import the engine object directly during module initialization.
+from binctl_server.web import create_app  # noqa: E402
 
 
 @pytest.fixture(scope='session')

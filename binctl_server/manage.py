@@ -14,11 +14,10 @@ if not os.environ.get('DATABASE_URL'):
     print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
     sys.exit(1)
 
-import sqlalchemy  # noqa: E402
-from milc import cli  # noqa: E402
+import sqlalchemy
+from milc import cli
 
-from . import db  # noqa: E402
-from .db import direct  # noqa: E402,F401  (ensures db.direct is accessible as an attribute of db)
+from . import db
 
 
 @cli.entrypoint('manage: binctl server administration.')

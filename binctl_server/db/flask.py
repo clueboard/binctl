@@ -9,9 +9,9 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.exc import IntegrityError
 
-from .. import db
 from ..auth import generate_token, hash_password, hash_token, verify_password_hash
 from . import base62
+from .engine import engine
 from .id_gen import new_id
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ _DUMMY_HASH = hash_password('dummy')
 def get_db() -> Connection:
     """Return the per-request SQLAlchemy connection, opening it on first access."""
     if 'db' not in g:
-        g.db = db.engine.connect()
+        g.db = engine.connect()
     return g.db
 
 
