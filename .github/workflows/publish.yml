@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/binctl-server
+      url: https://pypi.org/p/binctl-client
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,17 +38,59 @@ jobs:
 
       - name: Bump version
         run: uv version --bump "${{ inputs.bump }}" --no-sync
+      - name: Capture release version
+        run: echo "RELEASE_VERSION=$(uv version --short)" >> "$GITHUB_ENV"
       - run: ./genclient.sh
+      - name: Sync binctl-client version to server version
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import os
+
+          server_version = os.environ['RELEASE_VERSION']
+
+          client_pyproject = Path('binctl-client/pyproject.toml')
+          text = client_pyproject.read_text()
+          updated = re.sub(r'(?m)^version = "[^"]+"$', f'version = "{server_version}"', text, count=1)
+          found = re.search(r'(?m)^version = "([^"]+)"$', updated)
+          if found is None:
+              raise SystemExit('binctl-client pyproject.toml has no version field')
+          if found.group(1) != server_version:
+              raise SystemExit('Failed to synchronize binctl-client version')
+          client_pyproject.write_text(updated)
+          print(f'binctl-client version set to {server_version}')
+          PY
       - run: uv sync --locked
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run ty check
       - run: uv run pytest
       - run: uv build
+      - run: uv build --directory binctl-client
+      - name: Verify published versions match
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          version = os.environ['RELEASE_VERSION']
+          server = sorted(Path('dist').glob('binctl_server-*.whl'))
+          client = sorted(Path('binctl-client/dist').glob('binctl_client-*.whl'))
+          if not server or not client:
+              raise SystemExit('Missing built wheel(s)')
+          server_name = server[-1].name
+          client_name = client[-1].name
+          if f'binctl_server-{version}-' not in server_name:
+              raise SystemExit(f'Server wheel version mismatch: {server_name}')
+          if f'binctl_client-{version}-' not in client_name:
+              raise SystemExit(f'Client wheel version mismatch: {client_name}')
+          print(f'Validated matching version {version} for server and client wheels')
+          PY
 
       - name: Commit and tag release
         run: |
-          version="$(uv version --short)"
+          version="${RELEASE_VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml uv.lock
@@ -56,4 +98,12 @@ jobs:
           git tag -a "v$version" -m "Release v$version"
           git push origin HEAD:main "v$version"
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish binctl-server to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+
+      - name: Publish binctl-client to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: binctl-client/dist

@@ -218,13 +218,16 @@ ty check
 In GitHub Actions, run the `Publish to PyPI` workflow and select the `patch`,
 `minor`, or `major` version increment. The workflow runs from `main`, uses
 `uv version --bump` to update `pyproject.toml` and `uv.lock`, commits the new
-version, creates and pushes its matching `v<version>` tag, and publishes that
-version to PyPI.
+version, creates and pushes its matching `v<version>` tag, and publishes both
+`binctl-server` and `binctl-client` in the same run. The workflow regenerates
+`binctl-client`, syncs its version to the server version, then builds and
+publishes both distributions.
 
 Before the first release, configure PyPI Trusted Publishing for
 `clueboard/binctl` with workflow filename `publish.yml` and environment name
-`pypi`. The workflow uses GitHub Actions OIDC, so it does not require a PyPI
-API token or repository secret.
+`pypi` for both projects (`binctl-server` and `binctl-client`). The workflow
+uses GitHub Actions OIDC, so it does not require a PyPI API token or
+repository secret.
 
 ---
 

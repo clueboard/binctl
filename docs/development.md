@@ -54,4 +54,6 @@ Docs are published automatically to the `gh-pages` branch by
 In GitHub Actions, run the `Publish to PyPI` workflow and select the `patch`, `minor`, or `major`
 version increment. The workflow runs from `main`, uses `uv version --bump` to update
 `pyproject.toml` and `uv.lock`, commits the new version, creates and pushes its matching
-`v<version>` tag, and publishes that version to PyPI.
+`v<version>` tag, and publishes both `binctl-server` and `binctl-client` in the same run. The
+workflow regenerates `binctl-client` and syncs its package version to match the server version
+before building and publishing both distributions.
