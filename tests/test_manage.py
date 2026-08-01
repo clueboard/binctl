@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +14,43 @@ def _mock_cli(**args):
     for key, val in args.items():
         setattr(mock.args, key, val)
     return mock
+
+
+class TestConfiguration:
+    def test_help_does_not_require_database_url(self, tmp_path):
+        env = os.environ.copy()
+        env.pop('DATABASE_URL', None)
+        env['PYTHON_DOTENV_DISABLED'] = '1'
+
+        result = subprocess.run(
+            [sys.executable, '-m', 'binctl_server.manage', '-h'],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert 'usage: manage.py' in result.stdout
+
+    def test_explicit_config_file_supplies_database_url(self, tmp_path):
+        config_file = tmp_path / 'binctl.conf'
+        database_file = tmp_path / 'binctl.db'
+        config_file.write_text(f'[general]\ndatabase_url = sqlite:///{database_file}\n')
+        env = os.environ.copy()
+        env.pop('DATABASE_URL', None)
+        env['PYTHON_DOTENV_DISABLED'] = '1'
+
+        result = subprocess.run(
+            [sys.executable, '-m', 'binctl_server.manage', '--config-file', str(config_file), 'init-db'],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert database_file.exists()
 
 
 class TestListUsers:

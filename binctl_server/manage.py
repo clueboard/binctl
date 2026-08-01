@@ -3,27 +3,30 @@
 
 import getpass
 import os
-import sys
 from importlib.resources import files
 
 from dotenv import load_dotenv
 from milc import cli
 
 load_dotenv()
-cli.milc_options(name='binctl', config_file='/etc/binctl.conf')
-
-if not os.environ.get('DATABASE_URL') and cli.config.general.database_url:
-    os.environ['DATABASE_URL'] = str(cli.config.general.database_url)
-
-if not os.environ.get('DATABASE_URL'):
-    print('Error: DATABASE_URL environment variable is not set', file=sys.stderr)
-    sys.exit(1)
+cli.milc_options(name='binctl', config_file='/etc/binctl.conf', env_prefix='')
 
 import sqlalchemy
 
 from . import db
 
 
+@cli.prerun
+def configure_database(cli):
+    """Resolve the database URL after MILC has merged all configuration sources."""
+    if not cli.config.general.database_url:
+        cli.log.error('DATABASE_URL is not configured')
+        raise SystemExit(1)
+
+    os.environ['DATABASE_URL'] = str(cli.config.general.database_url)
+
+
+@cli.argument('--database-url', default=None, help='SQLAlchemy database URL')
 @cli.entrypoint('manage: binctl server administration.')
 def main(cli):
     """Top-level entrypoint. If no subcommand is given, show help."""
@@ -33,8 +36,10 @@ def main(cli):
 @cli.subcommand('Initialize the database schema.')
 def init_db(cli):
     """Apply the v1 SQL schema to the configured database."""
+    from .db.engine import engine
+
     sql = files(db).joinpath('v1.sql').read_text()
-    with db.engine.connect() as conn:
+    with engine.connect() as conn:
         for stmt in sql.split(';'):
             stmt = stmt.strip()
             if stmt:

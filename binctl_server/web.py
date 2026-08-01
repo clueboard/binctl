@@ -3,21 +3,21 @@ import logging
 import logging.config
 import os
 import pathlib
+from configparser import RawConfigParser
 
 import connexion
 from connexion.middleware import MiddlewarePosition
 from dotenv import load_dotenv
 from flask import g, jsonify
-from milc import cli
 from starlette.middleware.cors import CORSMiddleware
-
-cli.milc_options(name='binctl', config_file='/etc/binctl.conf')
 
 # openapi.yaml ships as package data alongside this module (see [tool.setuptools.package-data]
 # in pyproject.toml) so it's included in the installed wheel.
 # importlib.resources.files() returns a Traversable, which connexion's add_api() doesn't accept,
 # so convert it to a concrete pathlib.Path.
 _OPENAPI_SPEC = pathlib.Path(str(importlib.resources.files('binctl_server') / 'openapi.yaml'))
+_SYSTEM_CONFIG_FILE = pathlib.Path('/etc/binctl.conf')
+_CONFIG_NAMES = ('DATABASE_URL', 'CORS_ORIGINS', 'CORS_MAX_AGE', 'SESSION_LIFETIME_DAYS', 'ORPHAN_LOCATION')
 
 _LOGGING_CONFIG = {
     'version': 1,
@@ -41,6 +41,19 @@ _LOGGING_CONFIG = {
 }
 
 
+def _load_config():
+    """Load system configuration, then apply environment overrides."""
+    parser = RawConfigParser()
+    parser.read(_SYSTEM_CONFIG_FILE)
+    config = dict(parser.items('general')) if parser.has_section('general') else {}
+
+    for name in _CONFIG_NAMES:
+        if name in os.environ:
+            config[name.lower()] = os.environ[name]
+
+    return config
+
+
 def create_app():
     """Create and configure the Connexion/Flask application.
 
@@ -52,13 +65,11 @@ def create_app():
     """
     load_dotenv()
     logging.config.dictConfig(_LOGGING_CONFIG)
+    config = _load_config()
 
     def setting(name, default=None):
-        """Read an environment override, then the merged MILC configuration."""
-        env_value = os.environ.get(name.upper())
-        if env_value is not None:
-            return env_value
-        config_value = getattr(cli.config.general, name.lower())
+        """Read a setting from the merged server configuration."""
+        config_value = config.get(name.lower())
         return default if config_value is None else config_value
 
     database_url = setting('DATABASE_URL')

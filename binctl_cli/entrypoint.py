@@ -26,7 +26,7 @@ from binctl_client.models import NodeCreate, NodeUpdate, TagCreate, TagUpdate
 from binctl_client.types import Response
 from milc import cli
 
-cli.milc_options(name='binctl', config_file='/etc/binctl.conf')
+cli.milc_options(name='binctl', config_file='/etc/binctl.conf', env_prefix='')
 
 
 def _get_client() -> Client:
