@@ -22,4 +22,4 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run ty check
       - run: uv run pytest
-      - run: PYTHONPATH=binctl-client uv run pytest binctl-client/tests/test_binctl_cli.py
+      - run: PYTHONPATH=.:binctl-client uv run pytest binctl_cli/test_entrypoint.py
