@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import text
 
-import db
-from db.direct import (
+from binctl_server import db
+from binctl_server.db.direct import (
     create_token,
     create_user,
     fetch_all_users,

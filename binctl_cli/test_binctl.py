@@ -47,9 +47,9 @@ class TestNodeCreate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         """post_node_create.sync_detailed must be called with body=, not json_body=."""
         with patch('binctl_client.api.nodes.post_node_create.sync_detailed') as mock_sync:
-            with patch('binctl.Client'):
+            with patch('binctl_cli.cli.Client'):
                 mock_sync.return_value = _mock_response()
-                import binctl as bc
+                import binctl_cli.cli as bc
 
                 with patch.object(bc, 'cli', _make_cli(_make_cli_args(label='test', tag_id=[]))):
                     bc._node_create()
@@ -62,9 +62,9 @@ class TestNodeCreate(unittest.TestCase):
 class TestNodeUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         with patch('binctl_client.api.nodes.patch_node_update.sync_detailed') as mock_sync:
-            with patch('binctl.Client'):
+            with patch('binctl_cli.cli.Client'):
                 mock_sync.return_value = _mock_response()
-                import binctl as bc
+                import binctl_cli.cli as bc
 
                 with patch.object(bc, 'cli', _make_cli(_make_cli_args(label='updated', node_id='1'))):
                     bc._node_update()
@@ -77,9 +77,9 @@ class TestNodeUpdate(unittest.TestCase):
 class TestTagCreate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         with patch('binctl_client.api.tags.post_tag_create.sync_detailed') as mock_sync:
-            with patch('binctl.Client'):
+            with patch('binctl_cli.cli.Client'):
                 mock_sync.return_value = _mock_response()
-                import binctl as bc
+                import binctl_cli.cli as bc
 
                 with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='mytag'))):
                     bc._tag_create()
@@ -93,7 +93,7 @@ class TestTagUpdate(unittest.TestCase):
     def test_body_kwarg_not_json_body(self):
         with patch('binctl_client.api.tags.patch_tag_update.sync_detailed') as mock_sync:
             mock_sync.return_value = _mock_response()
-            import binctl as bc
+            import binctl_cli.cli as bc
 
             with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='renamed', tag_id='1'))):
                 bc._tag_update()
@@ -108,7 +108,7 @@ class TestNodeDetach(unittest.TestCase):
         """--no-parent must include parent_id=None in the body, not omit it."""
         with patch('binctl_client.api.nodes.patch_node_update.sync_detailed') as mock_sync:
             mock_sync.return_value = _mock_response()
-            import binctl as bc
+            import binctl_cli.cli as bc
 
             with patch.object(bc, 'cli', _make_cli(_make_cli_args(node_id='1', no_parent=True))):
                 bc._node_update()

@@ -40,15 +40,15 @@ cp .env.example .env
 # In .env, uncomment: DATABASE_URL=sqlite:///binctl.db
 
 # 5. Initialize the database
-python manage.py init-db
+binctl-manage init-db
 
 # 6. Create a user and get a token
-python manage.py create-user alice --token
+binctl-manage create-user alice --token
 # → prints something like: token: abc123...
 export TOKEN=<paste token here>
 
 # 7. Start the server (keep this terminal open, or run it in the background)
-uvicorn web:create_app --factory
+uvicorn binctl_server.web:create_app --factory
 
 # 8. In another terminal (with .venv activated), verify it works
 binctl --token $TOKEN node list
@@ -64,7 +64,7 @@ binctl --token $TOKEN node list
    pip install -e .
    ```
    `binctl-client` is installed from PyPI. `genclient.sh` uses `uvx` to generate a
-   local client from `binctl_spec/openapi.yaml` as an API-contract check; its `binctl-client/`
+   local client from `binctl_server/openapi.yaml` as an API-contract check; its `binctl-client/`
    output is ignored and must not be committed.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
@@ -81,26 +81,26 @@ binctl --token $TOKEN node list
    - MySQL: `mysql+pymysql://user:password@localhost/binctl`
    - PostgreSQL: `postgresql+psycopg2://user:password@localhost/binctl`
 
-   The server and `manage.py` load `.env` automatically — no manual `export` needed.
+   The server and `binctl-manage` load `.env` automatically — no manual `export` needed.
 
 3. Initialize the database:
    ```
-   python manage.py init-db
+   binctl-manage init-db
    ```
 
 4. Start the server:
    ```
-   uvicorn web:create_app --factory
+   uvicorn binctl_server.web:create_app --factory
    ```
 
 5. Create a user:
    - With a non-expiring API token (recommended for scripts):
      ```
-     python manage.py create-user alice --token
+     binctl-manage create-user alice --token
      ```
    - With a password (for browser/interactive use):
      ```
-     python manage.py create-user alice --password <password>
+     binctl-manage create-user alice --password <password>
      ```
    Then pass `--token <token>` (or `--username`/`--password`) to `binctl` commands.
 
@@ -117,15 +117,15 @@ Key flags for `binctl`:
 | `--token` | Bearer token (preferred) |
 | `--username` / `--password` | Login-based auth |
 
-`manage.py` subcommands (server-side user/token management):
+`binctl-manage` subcommands (server-side user/token management):
 
-- `python manage.py init-db` - initialize the database schema
-- `python manage.py create-user <username> --password <p>` - create a user with a password
-- `python manage.py create-user <username> --token` - create a passwordless user and emit a non-expiring token
-- `python manage.py set-password <username>` - interactively set a new password for a user
-- `python manage.py list-users` - list users
-- `python manage.py list-tokens <username>` - list tokens for a user
-- `python manage.py revoke-tokens <username>` - revoke all tokens for a user
+- `binctl-manage init-db` - initialize the database schema
+- `binctl-manage create-user <username> --password <p>` - create a user with a password
+- `binctl-manage create-user <username> --token` - create a passwordless user and emit a non-expiring token
+- `binctl-manage set-password <username>` - interactively set a new password for a user
+- `binctl-manage list-users` - list users
+- `binctl-manage list-tokens <username>` - list tokens for a user
+- `binctl-manage revoke-tokens <username>` - revoke all tokens for a user
 
 ## Example: Building an inventory
 
@@ -177,7 +177,7 @@ host: at [`systemd/binctl-server.service`](systemd/binctl-server.service) in thi
 - **SSL/TLS termination** — the Flask/uvicorn server does not handle TLS on its own.
 - **Rate limiting on `POST /v1/auth/login`** — scrypt makes each login attempt slow, but a determined attacker can still brute-force credentials over time without a request rate limit.
 
-**Token security** — tokens created via the login API (web/browser sessions) expire after 30 days by default; set `SESSION_LIFETIME_DAYS` to override. Tokens created via `python manage.py create-user` do not expire by default. All tokens should be treated with the same secrecy as a password: store them safely, do not share them, and revoke compromised tokens promptly with `python manage.py revoke-tokens`.
+**Token security** — tokens created via the login API (web/browser sessions) expire after 30 days by default; set `SESSION_LIFETIME_DAYS` to override. Tokens created via `binctl-manage create-user` do not expire by default. All tokens should be treated with the same secrecy as a password: store them safely, do not share them, and revoke compromised tokens promptly with `binctl-manage revoke-tokens`.
 
 **Password policy** — `set-password` enforces a minimum of 6 characters. No other complexity requirements are enforced by the application. Choose a strong password of at least 16 characters using a mix of uppercase letters, lowercase letters, digits, and symbols.
 
@@ -273,13 +273,13 @@ Tags are exposed via `binctl tag list|get|create|update`.
 Reinstall the project dependencies with `pip install -e .` or `uv sync`.
 
 **`Connection refused` / `Failed to connect` when running `binctl` commands**
-The server is not running. Start it with `uvicorn web:create_app --factory` (binds to
+The server is not running. Start it with `uvicorn binctl_server.web:create_app --factory` (binds to
 `http://localhost:5000` by default). If you changed the port, pass `--base-url http://localhost:<port>`
 to `binctl`.
 
 **`401 Unauthorized`**
-Token is missing or wrong. Re-create one with `python manage.py create-user alice --token`,
-or list existing tokens with `python manage.py list-tokens alice`.
+Token is missing or wrong. Re-create one with `binctl-manage create-user alice --token`,
+or list existing tokens with `binctl-manage list-tokens alice`.
 
 **`DATABASE_URL not set` or database errors on startup**
 Export the variable before running server or manage commands:

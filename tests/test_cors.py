@@ -8,7 +8,7 @@ def cors_client(monkeypatch):
     def _make(**env):
         for k, v in env.items():
             monkeypatch.setenv(k, v)
-        from web import create_app
+        from binctl_server.web import create_app
 
         app = create_app()
         return app.test_client()
@@ -18,7 +18,7 @@ def cors_client(monkeypatch):
 
 def test_wildcard_rejected(monkeypatch):
     monkeypatch.setenv('CORS_ORIGINS', '*')
-    from web import create_app
+    from binctl_server.web import create_app
 
     with pytest.raises(ValueError, match="CORS_ORIGINS='\\*' is not allowed"):
         create_app()
@@ -76,7 +76,7 @@ def test_default_max_age(cors_client):
 
 def test_cors_max_age_invalid_env_raises_helpful_error(monkeypatch):
     """CORS_MAX_AGE with a non-integer value must raise ValueError naming the env var."""
-    import web
+    import binctl_server.web as web
 
     monkeypatch.setenv('CORS_MAX_AGE', 'auto')
     with pytest.raises(ValueError, match='CORS_MAX_AGE'):

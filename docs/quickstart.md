@@ -19,15 +19,15 @@ cp .env.example .env
 # In .env, uncomment: DATABASE_URL=sqlite:///binctl.db
 
 # 5. Initialize the database
-python manage.py init-db
+binctl-manage init-db
 
 # 6. Create a user and get a token
-python manage.py create-user alice --token
+binctl-manage create-user alice --token
 # → prints something like: token: abc123...
 export TOKEN=<paste token here>
 
 # 7. Start the server (keep this terminal open, or run it in the background)
-uvicorn web:create_app --factory
+uvicorn binctl_server.web:create_app --factory
 
 # 8. In another terminal (with .venv activated), verify it works
 binctl --token $TOKEN node list

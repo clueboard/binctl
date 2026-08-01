@@ -6,7 +6,7 @@ Calls db.flask functions directly inside a Flask app context.
 
 import pytest
 
-from db.flask import create_node, ensure_parent_is_valid, set_parent
+from binctl_server.db.flask import create_node, ensure_parent_is_valid, set_parent
 
 
 class TestNoCycle:

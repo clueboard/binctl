@@ -1,17 +1,17 @@
 # Server administration
 
-Server-side user and token management is handled with `manage.py`, which loads `.env`
+Server-side user and token management is handled with `binctl-manage`, which loads `.env`
 automatically (see [Configuration](configuration.md)).
 
 | Command | Description |
 |---|---|
-| `python manage.py init-db` | Initialize the database schema |
-| `python manage.py create-user <username> --password <p>` | Create a user with a password |
-| `python manage.py create-user <username> --token` | Create a passwordless user and emit a non-expiring token |
-| `python manage.py set-password <username>` | Interactively set a new password for a user |
-| `python manage.py list-users` | List users |
-| `python manage.py list-tokens <username>` | List tokens for a user |
-| `python manage.py revoke-tokens <username>` | Revoke all tokens for a user |
+| `binctl-manage init-db` | Initialize the database schema |
+| `binctl-manage create-user <username> --password <p>` | Create a user with a password |
+| `binctl-manage create-user <username> --token` | Create a passwordless user and emit a non-expiring token |
+| `binctl-manage set-password <username>` | Interactively set a new password for a user |
+| `binctl-manage list-users` | List users |
+| `binctl-manage list-tokens <username>` | List tokens for a user |
+| `binctl-manage revoke-tokens <username>` | Revoke all tokens for a user |
 
 ## Choosing an auth method
 
@@ -25,7 +25,7 @@ See [Security](security.md) for token handling guidance and password requirement
 ## Running the server
 
 ```bash
-uvicorn web:create_app --factory
+uvicorn binctl_server.web:create_app --factory
 ```
 
 This binds to `http://localhost:5000` by default. Pass `--base-url http://localhost:<port>` to
@@ -47,7 +47,7 @@ A ready-to-use unit file is shipped as part of `binctl-server`:
    [Installation](installation.md) to create the virtual environment, install `binctl-server`
    (plus any DB driver extra you need), and create `.env` with `DATABASE_URL` and any other
    settings from [Configuration](configuration.md). Then initialize the database and create a
-   user with `python manage.py init-db` and `python manage.py create-user ...`.
+   user with `binctl-manage init-db` and `binctl-manage create-user ...`.
 
 2. Create a dedicated system user/group to run the service, and make sure it owns the install
    directory:

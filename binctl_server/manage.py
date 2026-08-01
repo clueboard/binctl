@@ -17,8 +17,8 @@ if not os.environ.get('DATABASE_URL'):
 import sqlalchemy  # noqa: E402
 from milc import cli  # noqa: E402
 
-import db  # noqa: E402
-import db.direct  # noqa: E402
+from . import db  # noqa: E402
+from .db import direct  # noqa: E402,F401  (ensures db.direct is accessible as an attribute of db)
 
 
 @cli.entrypoint('manage: binctl server administration.')
@@ -30,7 +30,7 @@ def main(cli):
 @cli.subcommand('Initialize the database schema.')
 def init_db(cli):
     """Apply the v1 SQL schema to the configured database."""
-    sql = files('db').joinpath('v1.sql').read_text()
+    sql = files(db).joinpath('v1.sql').read_text()
     with db.engine.connect() as conn:
         for stmt in sql.split(';'):
             stmt = stmt.strip()

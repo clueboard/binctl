@@ -1,6 +1,6 @@
 import pytest
 
-from auth import _SCRYPT_DKLEN, _SCRYPT_N, _SCRYPT_P, _SCRYPT_R, TOKEN_LENGTH, hash_password, mask_token, verify_password_hash
+from binctl_server.auth import _SCRYPT_DKLEN, _SCRYPT_N, _SCRYPT_P, _SCRYPT_R, TOKEN_LENGTH, hash_password, mask_token, verify_password_hash
 
 
 def test_round_trip():

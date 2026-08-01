@@ -1,6 +1,6 @@
 # Configuration
 
-Configuration is provided via environment variables. Both the server and `manage.py` load a
+Configuration is provided via environment variables. Both the server and `binctl-manage` load a
 `.env` file in the project root automatically — no manual `export` needed (though you can still
 export variables directly if you prefer).
 
@@ -34,7 +34,7 @@ SQLite needs no extra driver. MySQL and PostgreSQL need their optional driver in
 
 | Variable | Default | Description |
 |---|---|---|
-| `SESSION_LIFETIME_DAYS` | `30` | Expiry, in days, for tokens created via the login API (web/browser sessions). Tokens created with `python manage.py create-user --token` do not expire by default. |
+| `SESSION_LIFETIME_DAYS` | `30` | Expiry, in days, for tokens created via the login API (web/browser sessions). Tokens created with `binctl-manage create-user --token` do not expire by default. |
 
 ## Orphan handling
 

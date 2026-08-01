@@ -16,9 +16,9 @@ If you must do this, place a reverse proxy such as nginx or Caddy in front of it
 
 - Tokens created via the login API (web/browser sessions) expire after 30 days by default; set
   `SESSION_LIFETIME_DAYS` to override.
-- Tokens created via `python manage.py create-user --token` do not expire by default.
+- Tokens created via `binctl-manage create-user --token` do not expire by default.
 - Treat all tokens with the same secrecy as a password: store them safely, do not share them, and
-  revoke compromised tokens promptly with `python manage.py revoke-tokens <username>`.
+  revoke compromised tokens promptly with `binctl-manage revoke-tokens <username>`.
 
 ## Password policy
 

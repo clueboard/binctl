@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from db.id_gen import EPOCH_US, new_id
+from binctl_server.db.id_gen import EPOCH_US, new_id
 
 
 def test_returns_positive_int():
@@ -39,7 +39,7 @@ def test_no_signed_overflow_before_2091():
 def test_no_warning_before_2085():
     import importlib
 
-    import db.id_gen as id_gen_mod
+    import binctl_server.db.id_gen as id_gen_mod
 
     with patch('time.time', return_value=3_629_145_599.999):  # one second before 2085
         with warnings.catch_warnings():
@@ -50,7 +50,7 @@ def test_no_warning_before_2085():
 def test_warning_emitted_from_2085():
     import importlib
 
-    import db.id_gen as id_gen_mod
+    import binctl_server.db.id_gen as id_gen_mod
 
     with patch('time.time', return_value=3_629_145_600.0):  # 2085-01-01 00:00:00 UTC
         with pytest.warns(UserWarning, match='2091'):

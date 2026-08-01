@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
 
-from db.direct import create_token, create_user
+from binctl_server.db.direct import create_token, create_user
 
 
 class TestLogin:

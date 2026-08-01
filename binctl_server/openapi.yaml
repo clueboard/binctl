@@ -11,7 +11,7 @@ security:
 paths:
   /v1/nodes:
     get:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: get_nodes_list
       tags: [nodes]
       summary: List all nodes
@@ -37,7 +37,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/NodePage"
     post:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: post_node_create
       tags: [nodes]
       summary: Create a new node
@@ -63,7 +63,7 @@ paths:
         schema:
           type: string
     get:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: get_node_detail
       tags: [nodes]
       summary: Get a node by ID
@@ -77,7 +77,7 @@ paths:
         "404":
           description: Node not found
     patch:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: patch_node_update
       tags: [nodes]
       summary: Update an existing node
@@ -97,7 +97,7 @@ paths:
         "404":
           description: Node not found
     delete:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: delete_node_endpoint
       tags: [nodes]
       summary: Delete a node
@@ -133,7 +133,7 @@ paths:
 
   /v1/tags:
     get:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: get_tags_list
       tags: [tags]
       summary: List all tags
@@ -159,7 +159,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/TagPage"
     post:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: post_tag_create
       tags: [tags]
       summary: Create a tag
@@ -185,7 +185,7 @@ paths:
         schema:
           type: string
     get:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: get_tag_detail
       tags: [tags]
       summary: Get tag by ID
@@ -199,7 +199,7 @@ paths:
         "404":
           description: Tag not found
     patch:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: patch_tag_update
       tags: [tags]
       summary: Update a tag
@@ -219,7 +219,7 @@ paths:
         "404":
           description: Tag not found
     delete:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: delete_tag_endpoint
       tags: [tags]
       summary: Delete a tag
@@ -248,7 +248,7 @@ paths:
 
   /v1/config:
     get:
-      x-openapi-router-controller: routes
+      x-openapi-router-controller: binctl_server.routes
       operationId: get_config
       tags: [config]
       summary: Get server configuration
@@ -262,7 +262,7 @@ paths:
 
   /v1/auth/login:
     post:
-      x-openapi-router-controller: auth_operations
+      x-openapi-router-controller: binctl_server.auth_operations
       operationId: login
       tags: [auth]
       summary: Obtain a bearer token
@@ -285,7 +285,7 @@ paths:
 
   /v1/auth/logout:
     post:
-      x-openapi-router-controller: auth_operations
+      x-openapi-router-controller: binctl_server.auth_operations
       operationId: logout
       tags: [auth]
       summary: Revoke the current bearer token
@@ -300,7 +300,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      x-bearerInfoFunc: auth_operations.lookup_token
+      x-bearerInfoFunc: binctl_server.auth_operations.lookup_token
 
   schemas:
 

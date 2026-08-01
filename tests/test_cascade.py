@@ -6,7 +6,7 @@ and verify the expected cascade effects via the HTTP API and direct DB queries.
 
 from sqlalchemy import text
 
-from db import base62
+from binctl_server.db import base62
 
 
 class TestNodeDeleteCascade:

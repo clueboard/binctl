@@ -10,12 +10,11 @@ from dotenv import load_dotenv
 from flask import g, jsonify
 from starlette.middleware.cors import CORSMiddleware
 
-# openapi.yaml lives in the binctl_spec package (rather than next to this module) so it can be
-# shipped as package data — plain top-level modules like this one can't carry package data of
-# their own, so a spec file placed next to web.py would go missing from the installed wheel.
+# openapi.yaml ships as package data alongside this module (see [tool.setuptools.package-data]
+# in pyproject.toml) so it's included in the installed wheel.
 # importlib.resources.files() returns a Traversable, which connexion's add_api() doesn't accept,
 # so convert it to a concrete pathlib.Path.
-_OPENAPI_SPEC = pathlib.Path(str(importlib.resources.files('binctl_spec') / 'openapi.yaml'))
+_OPENAPI_SPEC = pathlib.Path(str(importlib.resources.files('binctl_server') / 'openapi.yaml'))
 
 _LOGGING_CONFIG = {
     'version': 1,

@@ -1,2 +1,2 @@
 #!/bin/sh
-uvicorn 'web:create_app' --factory --reload
+uvicorn 'binctl_server.web:create_app' --factory --reload

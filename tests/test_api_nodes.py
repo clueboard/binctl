@@ -1,6 +1,6 @@
 from sqlalchemy import text
 
-from db import base62
+from binctl_server.db import base62
 
 
 class TestNodeCreate:
@@ -239,7 +239,7 @@ class TestNodeDelete:
 
 def test_count_nodes_returns_int(app):
     with app.app.app_context():
-        from db.flask import count_nodes
+        from binctl_server.db.flask import count_nodes
 
         result = count_nodes()
         assert isinstance(result, int)

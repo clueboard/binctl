@@ -3,8 +3,8 @@ import logging
 from flask import Response, current_app, jsonify, request
 from werkzeug.exceptions import BadRequest
 
-from db import base62
-from db.flask import (
+from .db import base62
+from .db.flask import (
     count_nodes,
     count_tags,
     create_node,
@@ -24,7 +24,7 @@ from db.flask import (
     update_node,
     update_tag,
 )
-from web import error
+from .web import error
 
 logger = logging.getLogger(__name__)
 

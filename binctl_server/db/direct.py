@@ -3,9 +3,9 @@ from collections.abc import Sequence
 from sqlalchemy import text
 from sqlalchemy.engine.row import RowMapping
 
-import db
-from auth import generate_token, hash_password, hash_token, mask_token
-from db.id_gen import new_id
+from .. import db
+from ..auth import generate_token, hash_password, hash_token, mask_token
+from .id_gen import new_id
 
 
 def fetch_token_and_touch(token: str) -> dict | None:

@@ -110,7 +110,6 @@ name = "binctl-server"
 version = "1.0.2"
 source = { editable = "." }
 dependencies = [
-    { name = "binctl-client" },
     { name = "connexion", extra = ["flask"] },
     { name = "gunicorn" },
     { name = "milc" },
@@ -129,6 +128,7 @@ postgresql = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "binctl-client" },
     { name = "openapi-python-client" },
     { name = "pytest" },
     { name = "pytest-timeout" },
@@ -142,7 +142,6 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "binctl-client" },
     { name = "connexion", extras = ["flask"], specifier = ">=3.3" },
     { name = "gunicorn", specifier = ">=21.0" },
     { name = "milc" },
@@ -156,6 +155,7 @@ provides-extras = ["mysql", "postgresql"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "binctl-client" },
     { name = "openapi-python-client", specifier = ">=0.21" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-timeout", specifier = ">=2.3" },

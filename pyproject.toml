@@ -1,11 +1,10 @@
 [project]
 name = "binctl-server"
 version = "1.0.2"
-description = "Graph-based storage inventory server and CLI"
+description = "Graph-based storage inventory server"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "binctl-client",
     "uvicorn>=0.30",
     "connexion[flask]>=3.3",
     "gunicorn>=21.0",
@@ -19,7 +18,7 @@ mysql = ["pymysql"]
 postgresql = ["psycopg2-binary"]
 
 [project.scripts]
-binctl = "binctl:cli"
+binctl-manage = "binctl_server.manage:cli"
 
 [project.urls]
 Homepage = "https://github.com/clueboard/binctl"
@@ -31,18 +30,18 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["binctl", "web", "routes", "auth", "auth_operations", "manage"]
-packages = ["db", "binctl_spec"]
+packages = ["binctl_server", "binctl_server.db"]
 
 [tool.setuptools.package-data]
-db = ["v1.sql"]
-binctl_spec = ["openapi.yaml"]
+binctl_server = ["openapi.yaml"]
+"binctl_server.db" = ["v1.sql"]
 
 [tool.setuptools.data-files]
 "share/binctl/systemd" = ["systemd/binctl-server.service"]
 
 [dependency-groups]
 dev = [
+    "binctl-client",
     "openapi-python-client>=0.21",
     "ty>=0.0.1a1",
     "pytest>=8.0",
@@ -64,7 +63,7 @@ quote-style = "single"
 select = ["I"]   # enable isort-style import sorting rules
 
 [tool.ruff.lint.isort]
-known-first-party = ["binctl"]
+known-first-party = ["binctl_server", "binctl_cli"]
 combine-as-imports = true
 
 [tool.pytest.ini_options]

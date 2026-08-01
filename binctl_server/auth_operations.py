@@ -1,9 +1,9 @@
 import connexion
 from connexion.exceptions import Unauthorized
 
-from db.direct import fetch_token_and_touch
-from db.flask import create_user_session, revoke_token, verify_password
-from web import error
+from .db.direct import fetch_token_and_touch
+from .db.flask import create_user_session, revoke_token, verify_password
+from .web import error
 
 
 def lookup_token(token: str, required_scopes: object = None) -> dict:  # noqa: ARG001

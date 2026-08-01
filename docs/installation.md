@@ -24,7 +24,7 @@ Install database drivers only when needed:
    ```
 
    `binctl-client` is installed from PyPI. `genclient.sh` uses `uvx` to generate a local client
-   from `binctl_spec/openapi.yaml` as an API-contract check; its `binctl-client/` output is
+   from `binctl_server/openapi.yaml` as an API-contract check; its `binctl-client/` output is
    ignored and must not be committed.
 
    If you need MySQL or PostgreSQL support, install the optional driver afterward:
@@ -43,13 +43,13 @@ Install database drivers only when needed:
 3. Initialize the database:
 
    ```bash
-   python manage.py init-db
+   binctl-manage init-db
    ```
 
 4. Start the server:
 
    ```bash
-   uvicorn web:create_app --factory
+   uvicorn binctl_server.web:create_app --factory
    ```
 
 5. Create a user:
@@ -57,13 +57,13 @@ Install database drivers only when needed:
    - With a non-expiring API token (recommended for scripts):
 
      ```bash
-     python manage.py create-user alice --token
+     binctl-manage create-user alice --token
      ```
 
    - With a password (for browser/interactive use):
 
      ```bash
-     python manage.py create-user alice --password <password>
+     binctl-manage create-user alice --password <password>
      ```
 
    Then pass `--token <token>` (or `--username`/`--password`) to `binctl` commands.

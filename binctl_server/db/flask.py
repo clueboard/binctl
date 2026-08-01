@@ -9,10 +9,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.row import RowMapping
 from sqlalchemy.exc import IntegrityError
 
-import db
-from auth import generate_token, hash_password, hash_token, verify_password_hash
-from db import base62
-from db.id_gen import new_id
+from .. import db
+from ..auth import generate_token, hash_password, hash_token, verify_password_hash
+from . import base62
+from .id_gen import new_id
 
 logger = logging.getLogger(__name__)
 

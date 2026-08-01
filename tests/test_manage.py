@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import manage
+import binctl_server.manage as manage
 
 
 def _mock_cli(**args):

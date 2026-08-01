@@ -7,7 +7,7 @@ def session_client(monkeypatch):
 
     def _make(days: str):
         monkeypatch.setenv('SESSION_LIFETIME_DAYS', days)
-        from web import create_app
+        from binctl_server.web import create_app
 
         return create_app()
 
@@ -16,7 +16,7 @@ def session_client(monkeypatch):
 
 def test_invalid_session_lifetime_non_integer(monkeypatch):
     monkeypatch.setenv('SESSION_LIFETIME_DAYS', 'forever')
-    import web
+    import binctl_server.web as web
 
     with pytest.raises(ValueError, match='SESSION_LIFETIME_DAYS'):
         web.create_app()
@@ -24,7 +24,7 @@ def test_invalid_session_lifetime_non_integer(monkeypatch):
 
 def test_invalid_session_lifetime_zero(monkeypatch):
     monkeypatch.setenv('SESSION_LIFETIME_DAYS', '0')
-    import web
+    import binctl_server.web as web
 
     with pytest.raises(ValueError, match='SESSION_LIFETIME_DAYS'):
         web.create_app()
@@ -32,7 +32,7 @@ def test_invalid_session_lifetime_zero(monkeypatch):
 
 def test_invalid_session_lifetime_negative(monkeypatch):
     monkeypatch.setenv('SESSION_LIFETIME_DAYS', '-1')
-    import web
+    import binctl_server.web as web
 
     with pytest.raises(ValueError, match='SESSION_LIFETIME_DAYS'):
         web.create_app()
@@ -43,7 +43,7 @@ def test_session_lifetime_override(session_client, clean_db, engine):
 
     from sqlalchemy import text
 
-    from db.direct import create_user
+    from binctl_server.db.direct import create_user
 
     app = session_client('7')
     client = app.test_client()
