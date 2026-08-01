@@ -1,6 +1,6 @@
 [project]
 name = "binctl-server"
-version = "1.0.4"
+version = "1.0.5"
 description = "Graph-based storage inventory server"
 readme = "README.md"
 requires-python = ">=3.11"
