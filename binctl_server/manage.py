@@ -19,6 +19,9 @@ from . import db
 @cli.prerun
 def configure_database(cli):
     """Resolve the database URL after MILC has merged all configuration sources."""
+    if cli.subcommand_name is None:
+        return
+
     if not cli.config.general.database_url:
         cli.log.error('DATABASE_URL is not configured')
         raise SystemExit(1)

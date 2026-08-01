@@ -17,6 +17,22 @@ def _mock_cli(**args):
 
 
 class TestConfiguration:
+    def test_no_arguments_does_not_require_database_url(self, tmp_path):
+        env = os.environ.copy()
+        env.pop('DATABASE_URL', None)
+        env['PYTHON_DOTENV_DISABLED'] = '1'
+
+        result = subprocess.run(
+            [sys.executable, '-m', 'binctl_server.manage'],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        assert 'usage: manage.py' in result.stdout
+
     def test_help_does_not_require_database_url(self, tmp_path):
         env = os.environ.copy()
         env.pop('DATABASE_URL', None)
