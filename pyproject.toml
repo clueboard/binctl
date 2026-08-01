@@ -67,6 +67,6 @@ known-first-party = ["binctl_server", "binctl_cli"]
 combine-as-imports = true
 
 [tool.pytest.ini_options]
-testpaths = [".", "tests"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v"

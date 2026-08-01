@@ -1,13 +1,9 @@
 """Tests for binctl CLI — verifies correct parameter names passed to generated client."""
 
-import sys
 import types
 import unittest
 from http import HTTPStatus
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'binctl-client'))
 
 
 def _make_cli_args(**kwargs):
