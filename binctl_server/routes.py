@@ -187,8 +187,6 @@ def post_node_create() -> Response:
         return error(400, 'label must be 255 characters or fewer')
 
     description = data.get('description')
-    if description == '':
-        return error(400, 'description cannot be empty')
     is_container = bool(data.get('is_container', False))
     raw_parent_id = data.get('parent_id')
     raw_tag_ids = data.get('tag_ids') or []
@@ -238,8 +236,6 @@ def patch_node_update(node_id: str) -> Response:
         fields['label'] = data['label']
 
     if 'description' in data:
-        if data['description'] == '':
-            return error(400, 'description cannot be empty')
         fields['description'] = data['description']
 
     if 'is_container' in data:

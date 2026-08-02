@@ -23,6 +23,11 @@ class TestNodeCreate:
         resp = client.post('/v1/nodes', json={'label': ''}, headers=authed_headers)
         assert resp.status_code == 400
 
+    def test_create_empty_description(self, client, authed_headers):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'description': ''}, headers=authed_headers)
+        assert resp.status_code == 201
+        assert resp.json()['description'] == ''
+
     def test_create_with_container_parent(self, client, make_node, authed_headers):
         container_id = make_node('room', is_container=True)
         resp = client.post('/v1/nodes', json={'label': 'shelf', 'parent_id': container_id}, headers=authed_headers)
@@ -131,6 +136,12 @@ class TestNodeDeleteUnauthenticated:
 
 
 class TestNodePatch:
+    def test_patch_empty_description(self, client, make_node, authed_headers):
+        node_id = make_node('item')
+        resp = client.patch(f'/v1/nodes/{node_id}', json={'description': ''}, headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['description'] == ''
+
     def test_patch_with_integer_parent_id(self, client, make_node, authed_headers):
         node_id = make_node('item')
         resp = client.patch(f'/v1/nodes/{node_id}', json={'parent_id': 123}, headers=authed_headers)
