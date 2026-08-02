@@ -183,6 +183,20 @@ class TestNodeDelete:
         resp = client.delete('/v1/nodes/99999', headers=authed_headers)
         assert resp.status_code == 404
 
+    def test_delete_empty_container_does_not_create_orphan_location(self, client, engine, app, make_node, authed_headers, monkeypatch):
+        monkeypatch.setitem(app.app.config, 'ORPHAN_LOCATION', 'Lost and Found')
+        container_id = make_node('empty container', is_container=True)
+
+        resp = client.delete(f'/v1/nodes/{container_id}', headers=authed_headers)
+        assert resp.status_code == 200
+
+        with engine.connect() as conn:
+            orphan_location = conn.execute(
+                text('SELECT id FROM nodes WHERE label = :label'),
+                {'label': 'Lost and Found'},
+            ).first()
+        assert orphan_location is None
+
     def test_delete_container_orphans_children_when_no_orphan_location(self, client, app, make_node, authed_headers, monkeypatch):
         monkeypatch.setitem(app.app.config, 'ORPHAN_LOCATION', None)
         container_id = make_node('container', is_container=True)

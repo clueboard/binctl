@@ -434,7 +434,8 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
     """
     orphan_location = current_app.config.get('ORPHAN_LOCATION')
     orphan_parent_id = None
-    if orphan_location:
+    has_children = get_db().execute(text('SELECT 1 FROM edges WHERE parent_id = :id LIMIT 1'), {'id': node_id}).first() is not None
+    if orphan_location and has_children:
         orphan_parent_id = _find_orphan_container(orphan_location)
         if orphan_parent_id is None:
             orphan_parent_id = create_node(orphan_location, None, True)
