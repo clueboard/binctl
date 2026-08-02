@@ -38,7 +38,8 @@ binctl_server = ["openapi.yaml"]
 "binctl_server.db" = ["v1.sql"]
 
 [tool.setuptools.data-files]
-"share/binctl/systemd" = ["systemd/binctl-server.service"]
+"share/binctl/systemd" = ["etc/binctl-server.service"]
+"share/binctl/etc" = ["etc/binctl.conf"]
 
 [dependency-groups]
 dev = [
