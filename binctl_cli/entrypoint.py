@@ -14,6 +14,7 @@ from binctl_client.api.nodes import (
     get_nodes_list,
     patch_node_update,
     post_node_create,
+    put_node_upsert,
 )
 from binctl_client.api.tags import (
     delete_tag_endpoint,
@@ -22,7 +23,7 @@ from binctl_client.api.tags import (
     patch_tag_update,
     post_tag_create,
 )
-from binctl_client.models import NodeCreate, NodeUpdate, TagCreate, TagUpdate
+from binctl_client.models import NodeCreate, NodeReplace, NodeUpdate, TagCreate, TagUpdate
 from binctl_client.types import Response
 from milc import cli
 
@@ -36,6 +37,10 @@ def _get_client() -> Client:
     if token:
         return Client(base_url=base_url, token=token)
     return Client(base_url=base_url, username=cli.config.general.username, password=cli.config.general.password)
+
+
+def _idempotency_kwargs() -> dict:
+    return {'idempotency_key': cli.args.idempotency_key} if cli.args.idempotency_key else {}
 
 
 _SPINNER_TEXT = {
@@ -79,16 +84,16 @@ def _format_tag(action, result) -> str:
             return 'No tags.'
         lines = [f'{len(result)} tag{"s" if len(result) != 1 else ""}:']
         for t in result:
-            lines.append(f'  {t.name} ({t.id})')
+            lines.append(f'  {t.name}')
         return '\n'.join(lines)
     if action == 'get':
-        return f'"{result.name}" (id: {result.id})'
+        return f'"{result.name}"'
     if action == 'create':
-        return f'Created tag "{result.name}" (id: {result.id})'
+        return f'Created tag "{result.name}"'
     if action == 'update':
-        return f'Updated tag "{result.name}" (id: {result.id})'
+        return f'Updated tag "{result.name}"'
     if action == 'delete':
-        return f'Deleted tag "{cli.args.tag_id}"'
+        return f'Deleted tag "{cli.args.tag_name}"'
     return ''
 
 
@@ -132,6 +137,7 @@ def _check_response(response: Response, label: str):
 
 @cli.argument('--base-url', default='http://localhost:5000', help='Base URL for the binctl API (e.g. http://localhost:5000)')
 @cli.argument('--token', default=None, help='Bearer token for authentication')
+@cli.argument('--idempotency-key', default=None, help='Idempotency key for create/update operations')
 @cli.argument('--username', default=None, help='Username for login-based authentication')
 @cli.argument(
     '--password',
@@ -181,16 +187,26 @@ def _node_create():
         description=cli.args.description,
         is_container=is_container,
         parent_id=cli.args.parent_id,
-        tag_ids=cli.args.tag_id or [],
+        tags=cli.args.tag or [],
     )
-    response = post_node_create.sync_detailed(client=client, body=body)
+    if cli.args.node_id:
+        replacement = NodeReplace(
+            label=cli.args.label,
+            description=cli.args.description,
+            is_container=is_container,
+            parent_id=cli.args.parent_id,
+            tags=cli.args.tag or [],
+        )
+        response = put_node_upsert.sync_detailed(client=client, node_id=cli.args.node_id, body=replacement, **_idempotency_kwargs())
+    else:
+        response = post_node_create.sync_detailed(client=client, body=body, **_idempotency_kwargs())
     _check_response(response, 'node create')
     return response.parsed
 
 
 def _node_delete():
     client = _get_client()
-    response = delete_node_endpoint.sync_detailed(client=client, node_id=cli.args.node_id)
+    response = delete_node_endpoint.sync_detailed(client=client, node_id=cli.args.node_id, **_idempotency_kwargs())
     _check_response(response, f'node {cli.args.node_id}')
     return response.parsed
 
@@ -210,12 +226,12 @@ def _node_update():
         body_kwargs['parent_id'] = cli.args.parent_id
     elif cli.args.no_parent:
         body_kwargs['parent_id'] = None
-    if cli.args.tag_id is not None:
-        body_kwargs['tag_ids'] = cli.args.tag_id
+    if cli.args.tag is not None:
+        body_kwargs['tags'] = cli.args.tag
 
     body = NodeUpdate(**body_kwargs)
 
-    response = patch_node_update.sync_detailed(client=client, node_id=cli.args.node_id, body=body)
+    response = patch_node_update.sync_detailed(client=client, node_id=cli.args.node_id, body=body, **_idempotency_kwargs())
     _check_response(response, f'node {cli.args.node_id}')
     return response.parsed
 
@@ -243,31 +259,31 @@ def _tag_list():
 
 def _tag_get():
     client = _get_client()
-    response = get_tag_detail.sync_detailed(client=client, tag_id=cli.args.tag_id)
-    _check_response(response, f'tag {cli.args.tag_id}')
+    response = get_tag_detail.sync_detailed(client=client, tag_name=cli.args.tag_name)
+    _check_response(response, f'tag {cli.args.tag_name}')
     return response.parsed
 
 
 def _tag_create():
     client = _get_client()
     body = TagCreate(name=cli.args.name)
-    response = post_tag_create.sync_detailed(client=client, body=body)
+    response = post_tag_create.sync_detailed(client=client, body=body, **_idempotency_kwargs())
     _check_response(response, 'tag create')
     return response.parsed
 
 
 def _tag_delete():
     client = _get_client()
-    response = delete_tag_endpoint.sync_detailed(client=client, tag_id=cli.args.tag_id)
-    _check_response(response, f'tag {cli.args.tag_id}')
+    response = delete_tag_endpoint.sync_detailed(client=client, tag_name=cli.args.tag_name, **_idempotency_kwargs())
+    _check_response(response, f'tag {cli.args.tag_name}')
     return response.parsed
 
 
 def _tag_update():
     client = _get_client()
     body = TagUpdate(name=cli.args.name)
-    response = patch_tag_update.sync_detailed(client=client, tag_id=cli.args.tag_id, body=body)
-    _check_response(response, f'tag {cli.args.tag_id}')
+    response = patch_tag_update.sync_detailed(client=client, tag_name=cli.args.tag_name, body=body, **_idempotency_kwargs())
+    _check_response(response, f'tag {cli.args.tag_name}')
     return response.parsed
 
 
@@ -281,7 +297,7 @@ def _tag_update():
     choices=['list', 'get', 'create', 'update', 'delete'],
     help='Node action to perform: list|get|create|update|delete',
 )
-@cli.argument('--node-id', type=str, help='Node ID (required for get/update/delete)')
+@cli.argument('--node-id', type=str, help='Node ID (required for get/update/delete; optional client ID for create)')
 @cli.argument('--label', help='Label for create/update')
 @cli.argument('--description', help='Description for create/update', default=None)
 @cli.argument(
@@ -291,7 +307,7 @@ def _tag_update():
 )
 @cli.argument('--parent-id', type=str, default=None, help='Parent node ID')
 @cli.argument('--no-parent', action='store_true', default=False, help='Detach node from its parent')
-@cli.argument('--tag-id', type=str, nargs='*', help='Tag IDs to attach/replace')
+@cli.argument('--tag', type=str, nargs='*', help='Tag names to attach/replace')
 @cli.subcommand('Node operations: list, get, create, update, delete.')
 def node(cli):
     """binctl node <action> [options]"""
@@ -327,7 +343,7 @@ def node(cli):
                     cli.args.label,
                     cli.args.description,
                     cli.args.parent_id,
-                    cli.args.tag_id,
+                    cli.args.tag,
                 )
             )
             and cli.config_source.node.is_container != 'argument'
@@ -358,7 +374,7 @@ def node(cli):
     choices=['list', 'get', 'create', 'update', 'delete'],
     help='Tag action to perform: list|get|create|update|delete',
 )
-@cli.argument('--tag-id', type=str, help='Tag ID (required for get/update/delete)')
+@cli.argument('--tag-name', type=str, help='Tag name (required for get/update/delete)')
 @cli.argument('--name', help='Tag name for create/update')
 @cli.subcommand('Tag operations: list, get, create, update, delete.')
 def tag(cli):
@@ -370,8 +386,8 @@ def tag(cli):
         return
 
     if action == 'get':
-        if cli.args.tag_id is None:
-            cli.log.error('tag get requires --tag-id')
+        if cli.args.tag_name is None:
+            cli.log.error('tag get requires --tag-name')
             raise SystemExit(1)
         _run_with_output('tag', 'get', _tag_get, _format_tag)
         return
@@ -384,8 +400,8 @@ def tag(cli):
         return
 
     if action == 'update':
-        if cli.args.tag_id is None:
-            cli.log.error('tag update requires --tag-id')
+        if cli.args.tag_name is None:
+            cli.log.error('tag update requires --tag-name')
             raise SystemExit(1)
         if not cli.args.name:
             cli.log.error('tag update requires --name')
@@ -394,8 +410,8 @@ def tag(cli):
         return
 
     if action == 'delete':
-        if cli.args.tag_id is None:
-            cli.log.error('tag delete requires --tag-id')
+        if cli.args.tag_name is None:
+            cli.log.error('tag delete requires --tag-name')
             raise SystemExit(1)
         _run_with_output('tag', 'delete', _tag_delete, _format_tag)
         return

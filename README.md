@@ -107,7 +107,7 @@ binctl --token $TOKEN node list
 ## CLI
 
 - `binctl node list|get|create|update|delete` - manage nodes
-- `binctl tag list|get|create|update|delete`  - manage tags
+- `binctl tag list|get|create|update|delete`  - manage tags by unique name
 
 Key flags for `binctl`:
 
@@ -201,7 +201,7 @@ uv sync
 uv run pytest
 uv run ruff check
 uv run ruff format --check
-uv run ty check
+PYTHONPATH=.:binctl-client uv run ty check
 ```
 
 ## Tests / CI
@@ -212,7 +212,7 @@ The following must pass before merging (run with the venv activated):
 pytest
 ruff check
 ruff format --check
-ty check
+PYTHONPATH=.:binctl-client ty check
 ```
 
 ## Publishing releases
@@ -271,6 +271,29 @@ When you delete a container, any direct children can be reassigned by setting `O
 Tags are stored in `tags` + `tag_node` for future filtering and categorization.
 
 Tags are exposed via `binctl tag list|get|create|update`.
+
+### Offline creation and safe retries
+
+The server normally assigns node IDs with `POST /v1/nodes`. Offline clients may generate an ID
+and create or fully replace that resource with `PUT /v1/nodes/{id}`. A PUT body is the complete
+desired state: omitted `description`, `parent_id`, and `tags` are cleared, and omitted
+`is_container` is `false`. Upload parents before children.
+
+Node IDs are canonical, case-sensitive base62 encodings using
+`0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`. The decoded signed 64-bit integer is
+`(microseconds_since_2020-03-11T00:00:00Z << 12) | secure_random_12_bits`; valid IDs decode to
+`1...(2^63-1)` with no leading zero. Client clock skew is accepted.
+
+Idempotency is controlled by a database-wide lock. `PUT /v1/lock` enables it, `GET /v1/lock`
+reports its state, and `DELETE /v1/lock` disables it. While enabled, every node or tag mutation
+must include an `Idempotency-Key`; missing keys return `428 Precondition Required`. While disabled,
+mutation keys are rejected with `409 Conflict`. Repeating the same authenticated request with the
+same key returns its original successful response; reusing a key for a different method, path, or
+JSON body returns `409 Conflict`. Failed requests do not consume the key. The lock endpoints are
+exempt from the lock so it can always be disabled.
+
+Tags are public unique strings matching `[a-z-]+` rather than public IDs. Node write bodies use
+`tags: ["fragile"]`, and missing tags are created atomically with the node mutation.
 
 ## Troubleshooting
 

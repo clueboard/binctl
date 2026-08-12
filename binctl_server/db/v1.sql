@@ -3,7 +3,7 @@ CREATE TABLE schema_version (
     version      INT NOT NULL
 );
 
-INSERT INTO schema_version (id, version) VALUES (1, 1);
+INSERT INTO schema_version (id, version) VALUES (1, 2);
 
 CREATE TABLE nodes (
     id           BIGINT NOT NULL PRIMARY KEY,
@@ -70,3 +70,21 @@ CREATE TABLE tokens (
     CONSTRAINT fk_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE (token_hash)
 );
+
+CREATE TABLE idempotency_keys (
+    user_id       BIGINT NOT NULL,
+    key_value     VARCHAR(255) NOT NULL,
+    request_hash  VARCHAR(64) NOT NULL,
+    response_code INT NOT NULL,
+    response_body TEXT NOT NULL,
+    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, key_value),
+    CONSTRAINT fk_idempotency_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE idempotency_lock (
+    id      INTEGER NOT NULL DEFAULT 1 CHECK (id = 1) PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1))
+);
+
+INSERT INTO idempotency_lock (id, enabled) VALUES (1, 0);

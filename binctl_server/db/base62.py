@@ -22,3 +22,11 @@ def decode(s: str) -> int:
             raise ValueError(f'invalid base62 character: {c!r}')
         result = result * _BASE + _CHAR_TO_INT[c]
     return result
+
+
+def decode_id(s: str) -> int:
+    """Decode a canonical base62 signed-BIGINT identifier."""
+    value = decode(s)
+    if value < 1 or value > (1 << 63) - 1 or encode(value) != s:
+        raise ValueError('identifier must be canonical base62 in the signed 64-bit range')
+    return value

@@ -64,7 +64,7 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check
       - run: uv run ruff format --check
-      - run: uv run ty check
+      - run: PYTHONPATH=.:binctl-client uv run ty check
       - run: uv run pytest
       - run: PYTHONPATH=.:binctl-client uv run pytest binctl_cli/test_entrypoint.py
       - run: uv build

@@ -41,8 +41,8 @@ class TestNodeDeleteCascade:
         assert row is None
 
     def test_delete_node_cascades_tag_node(self, client, engine, make_node, make_tag):
-        tag_id = make_tag('mytag')
-        node_id = make_node('item', tag_ids=[tag_id])
+        tag_name = make_tag('mytag')
+        node_id = make_node('item', tags=[tag_name])
 
         with engine.connect() as conn:
             conn.execute(text('DELETE FROM nodes WHERE id = :id'), {'id': base62.decode(node_id)})
@@ -54,10 +54,7 @@ class TestNodeDeleteCascade:
                 text('SELECT 1 FROM tag_node WHERE node_id = :id'),
                 {'id': base62.decode(node_id)},
             ).first()
-            tag_row = conn.execute(
-                text('SELECT 1 FROM tags WHERE id = :id'),
-                {'id': base62.decode(tag_id)},
-            ).first()
+            tag_row = conn.execute(text('SELECT 1 FROM tags WHERE name = :name'), {'name': tag_name}).first()
         assert tn_row is None
         assert tag_row is not None
 
@@ -84,18 +81,19 @@ class TestNodeDeleteCascade:
 
 class TestTagDeleteCascade:
     def test_delete_tag_cascades_tag_node(self, client, engine, make_node, make_tag):
-        tag_id = make_tag('ephemeral')
-        node_id = make_node('item', tag_ids=[tag_id])
+        tag_name = make_tag('ephemeral')
+        node_id = make_node('item', tags=[tag_name])
 
         with engine.connect() as conn:
-            conn.execute(text('DELETE FROM tags WHERE id = :id'), {'id': base62.decode(tag_id)})
+            tag_id = conn.execute(text('SELECT id FROM tags WHERE name = :name'), {'name': tag_name}).scalar_one()
+            conn.execute(text('DELETE FROM tags WHERE id = :id'), {'id': tag_id})
             conn.commit()
 
         # tag_node row is gone but the node survives
         with engine.connect() as conn:
             tn_row = conn.execute(
                 text('SELECT 1 FROM tag_node WHERE tag_id = :id'),
-                {'id': base62.decode(tag_id)},
+                {'id': tag_id},
             ).first()
             node_row = conn.execute(
                 text('SELECT 1 FROM nodes WHERE id = :id'),

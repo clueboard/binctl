@@ -1,6 +1,11 @@
+import hashlib
+import json
 import logging
 
-from flask import Response, current_app, jsonify, request
+import connexion
+from flask import Response, current_app, g, jsonify, request
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest
 
 from .db import base62
@@ -19,7 +24,9 @@ from .db.flask import (
     fetch_tag,
     fetch_tags_for_node,
     fetch_tags_page,
+    get_db,
     node_row_to_dict,
+    put_node,
     tag_row_to_dict,
     update_node,
     update_tag,
@@ -31,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 def _decode_id(raw: str, name: str) -> int:
     try:
-        return base62.decode(raw)
+        return base62.decode_id(raw)
     except (TypeError, ValueError):
         raise BadRequest(f'invalid {name}: {raw!r}')
 
@@ -42,6 +49,121 @@ def _parse_json_body() -> dict:
     if data is None:
         raise BadRequest('Request body must be valid JSON')
     return data
+
+
+def _idempotent(data: dict, operation) -> Response:
+    """Run a mutation and atomically save/replay its successful response."""
+    key = request.headers.get('Idempotency-Key')
+    conn = get_db()
+    lock_enabled = bool(conn.execute(text('SELECT enabled FROM idempotency_lock WHERE id = 1')).scalar_one())
+    if lock_enabled and key is None:
+        conn.rollback()
+        return error(428, 'Idempotency-Key is required while the idempotency lock is enabled')
+    if not lock_enabled and key is not None:
+        conn.rollback()
+        return error(409, 'Idempotency-Key is not allowed while the idempotency lock is disabled')
+    if key is None:
+        conn.rollback()
+        return operation()
+    if not key or len(key) > 255:
+        return error(400, 'Idempotency-Key must contain between 1 and 255 characters')
+
+    token_info = connexion.context.context['token_info']
+    user_id = token_info['user_id']
+    canonical = json.dumps(data, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+    fingerprint = hashlib.sha256(f'{request.method}\n{request.path}\n{canonical}'.encode()).hexdigest()
+
+    def replay(row) -> Response:
+        if row['request_hash'] != fingerprint:
+            return error(409, 'Idempotency-Key was already used for a different request')
+        return Response(row['response_body'], status=row['response_code'], mimetype='application/json')
+
+    row = (
+        conn.execute(
+            text('SELECT request_hash, response_code, response_body FROM idempotency_keys WHERE user_id = :user_id AND key_value = :key'),
+            {'user_id': user_id, 'key': key},
+        )
+        .mappings()
+        .first()
+    )
+    if row:
+        conn.rollback()
+        return replay(row)
+
+    try:
+        g.managed_transaction = True
+        response = operation()
+        if not 200 <= response.status_code < 300:
+            conn.rollback()
+            return response
+        conn.execute(
+            text(
+                'INSERT INTO idempotency_keys '
+                '(user_id, key_value, request_hash, response_code, response_body) '
+                'VALUES (:user_id, :key, :request_hash, :response_code, :response_body)'
+            ),
+            {
+                'user_id': user_id,
+                'key': key,
+                'request_hash': fingerprint,
+                'response_code': response.status_code,
+                'response_body': response.get_data(as_text=True),
+            },
+        )
+        conn.commit()
+        return response
+    except IntegrityError:
+        conn.rollback()
+        row = (
+            conn.execute(
+                text('SELECT request_hash, response_code, response_body FROM idempotency_keys WHERE user_id = :user_id AND key_value = :key'),
+                {'user_id': user_id, 'key': key},
+            )
+            .mappings()
+            .first()
+        )
+        conn.rollback()
+        if row:
+            return replay(row)
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        g.pop('managed_transaction', None)
+
+
+def get_lock() -> Response:
+    enabled = bool(get_db().execute(text('SELECT enabled FROM idempotency_lock WHERE id = 1')).scalar_one())
+    return jsonify({'enabled': enabled})
+
+
+def enable_lock() -> Response:
+    conn = get_db()
+    conn.execute(text('UPDATE idempotency_lock SET enabled = 1 WHERE id = 1'))
+    conn.commit()
+    return jsonify({'enabled': True})
+
+
+def disable_lock() -> Response:
+    conn = get_db()
+    conn.execute(text('UPDATE idempotency_lock SET enabled = 0 WHERE id = 1'))
+    conn.commit()
+    return jsonify({'enabled': False})
+
+
+def _node_response(node_id: int, status: int = 200) -> Response:
+    row = fetch_node(node_id)
+    if row is None:
+        return error(500, 'Internal server error')
+    parent_id = fetch_parent_id(node_id)
+    node = node_row_to_dict(row)
+    node['parent_id'] = base62.encode(parent_id) if parent_id is not None else None
+    node['children'] = fetch_children(node_id)
+    node['tags'] = fetch_tags_for_node(node_id)
+    response = jsonify(node)
+    response.status_code = status
+    return response
 
 
 # Config endpoint
@@ -74,13 +196,12 @@ def get_tags_list() -> Response:
     )
 
 
-def get_tag_detail(tag_id: str) -> Response:
-    tag_id_int = _decode_id(tag_id, 'tag_id')
-    tag = fetch_tag(tag_id_int)
+def get_tag_detail(tag_name: str) -> Response:
+    tag = fetch_tag(tag_name)
     if not tag:
         return error(404, 'Tag not found')
 
-    nodes = fetch_nodes_for_tag(tag_id_int)
+    nodes = fetch_nodes_for_tag(tag_name)
 
     return jsonify(
         {
@@ -90,52 +211,53 @@ def get_tag_detail(tag_id: str) -> Response:
     )
 
 
-def post_tag_create() -> Response:
+def post_tag_create(idempotency_key: str | None = None) -> Response:  # noqa: ARG001
     data = _parse_json_body()
-    name = data['name']
 
-    try:
-        tag_id = create_tag(name)
-    except ValueError as e:
-        return error(409, str(e))
+    def operation():
+        name = data['name']
+        try:
+            create_tag(name)
+        except ValueError as e:
+            return error(409, str(e))
+        tag = fetch_tag(name)
+        if tag is None:
+            return error(500, 'Internal server error')
+        resp = jsonify(tag_row_to_dict(tag))
+        resp.status_code = 201
+        return resp
 
-    tag = fetch_tag(tag_id)
-    if tag is None:
-        logger.error('fetch_tag returned None after create_tag succeeded for name=%r', name)
-        return error(500, 'Internal server error')
-    resp = jsonify(tag_row_to_dict(tag))
-    resp.status_code = 201
-    return resp
-
-
-def delete_tag_endpoint(tag_id: str) -> Response:
-    delete_op = delete_tag(_decode_id(tag_id, 'tag_id'))
-
-    if delete_op is None:
-        return error(404, 'Tag not found')
-
-    total, node_count = delete_op
-
-    return jsonify({'deleted': {'total': total, 'associations': node_count}})
+    return _idempotent(data, operation)
 
 
-def patch_tag_update(tag_id: str) -> Response:
-    tag_id_int = _decode_id(tag_id, 'tag_id')
+def delete_tag_endpoint(tag_name: str, idempotency_key: str | None = None) -> Response:  # noqa: ARG001
+    def operation():
+        delete_op = delete_tag(tag_name)
+        if delete_op is None:
+            return error(404, 'Tag not found')
+        total, node_count = delete_op
+        return jsonify({'deleted': {'total': total, 'associations': node_count}})
+
+    return _idempotent({}, operation)
+
+
+def patch_tag_update(tag_name: str, idempotency_key: str | None = None) -> Response:  # noqa: ARG001
     data = _parse_json_body()
-    name = data['name']
 
-    try:
-        rowcount = update_tag(tag_id_int, name)
-    except ValueError as e:
-        return error(409, str(e))
+    def operation():
+        name = data['name']
+        try:
+            rowcount = update_tag(tag_name, name)
+        except ValueError as e:
+            return error(409, str(e))
+        if rowcount == 0:
+            return error(404, 'Tag not found')
+        tag = fetch_tag(name)
+        if tag is None:
+            return error(500, 'Internal server error')
+        return jsonify(tag_row_to_dict(tag))
 
-    if rowcount == 0:
-        return error(404, 'Tag not found')
-    tag = fetch_tag(tag_id_int)
-    if tag is None:
-        logger.error('fetch_tag returned None after update_tag succeeded for tag_id=%s', tag_id)
-        return error(500, 'Internal server error')
-    return jsonify(tag_row_to_dict(tag))
+    return _idempotent(data, operation)
 
 
 # Node endpoints
@@ -175,7 +297,7 @@ def get_node_detail(node_id: str) -> Response:
     return jsonify(node)
 
 
-def post_node_create() -> Response:
+def post_node_create(idempotency_key: str | None = None) -> Response:  # noqa: ARG001
     data = _parse_json_body()
     label = data.get('label')
 
@@ -189,41 +311,24 @@ def post_node_create() -> Response:
     description = data.get('description')
     is_container = bool(data.get('is_container', False))
     raw_parent_id = data.get('parent_id')
-    raw_tag_ids = data.get('tag_ids') or []
+    tags = data.get('tags') or []
 
     try:
         parent_id_int = _decode_id(raw_parent_id, 'parent_id') if raw_parent_id is not None else None
-        tag_id_ints = [_decode_id(t, 'tag_ids') for t in raw_tag_ids]
     except BadRequest as e:
         return error(400, e.description)
 
-    try:
-        node_id = create_node(label, description, is_container, parent_id=parent_id_int, tag_ids=tag_id_ints)
-    except ValueError as ve:
-        logger.error(f'Validation error in post_node_create: {ve}')
-        return error(400, str(ve))
+    def operation():
+        try:
+            node_id = create_node(label, description, is_container, parent_id=parent_id_int, tags=tags)
+        except ValueError as ve:
+            return error(400, str(ve))
+        return _node_response(node_id, 201)
 
-    # Fetch full node representation
-    row = fetch_node(node_id)
-    if row is None:
-        logger.error('fetch_node returned None after create_node succeeded for node_id=%d', node_id)
-        return error(500, 'Internal server error')
-    parent_id_int = fetch_parent_id(node_id)
-    children = fetch_children(node_id)
-    tags = fetch_tags_for_node(node_id)
-
-    node = node_row_to_dict(row)
-    node['parent_id'] = base62.encode(parent_id_int) if parent_id_int is not None else None
-    node['children'] = children
-    node['tags'] = tags
-
-    resp = jsonify(node)
-    resp.status_code = 201
-
-    return resp
+    return _idempotent(data, operation)
 
 
-def patch_node_update(node_id: str) -> Response:
+def patch_node_update(node_id: str, idempotency_key: str | None = None) -> Response:  # noqa: ARG001
     node_id_int = _decode_id(node_id, 'node_id')
     data = _parse_json_body()
     fields = {}
@@ -244,63 +349,77 @@ def patch_node_update(node_id: str) -> Response:
     parent_provided = 'parent_id' in data
     raw_parent_id = data.get('parent_id') if parent_provided else None
 
-    tag_ids_provided = 'tag_ids' in data
-    raw_tag_ids = data.get('tag_ids') or []
+    tags_provided = 'tags' in data
+    tags = data.get('tags') or []
 
     try:
         parent_id_int = _decode_id(raw_parent_id, 'parent_id') if raw_parent_id is not None else None
-        tag_id_ints = [_decode_id(t, 'tag_ids') for t in raw_tag_ids]
     except BadRequest as e:
         return error(400, e.description)
 
+    def operation():
+        try:
+            found = update_node(
+                node_id_int,
+                fields,
+                parent_provided=parent_provided,
+                parent_id=parent_id_int,
+                tags_provided=tags_provided,
+                tags=tags,
+            )
+        except ValueError as ve:
+            return error(400, str(ve))
+        if not found:
+            return error(404, 'Node not found')
+        return _node_response(node_id_int)
+
+    return _idempotent(data, operation)
+
+
+def put_node_upsert(node_id: str, idempotency_key: str | None = None) -> Response:  # noqa: ARG001
+    node_id_int = _decode_id(node_id, 'node_id')
+    data = _parse_json_body()
+    label = data.get('label')
+    if not label:
+        return error(400, 'Missing or empty required field: label')
+    if len(label) > 255:
+        return error(400, 'label must be 255 characters or fewer')
+    description = data.get('description')
+    is_container = bool(data.get('is_container', False))
+    raw_parent_id = data.get('parent_id')
     try:
-        found = update_node(
-            node_id_int,
-            fields,
-            parent_provided=parent_provided,
-            parent_id=parent_id_int,
-            tag_ids_provided=tag_ids_provided,
-            tag_ids=tag_id_ints,
+        parent_id = _decode_id(raw_parent_id, 'parent_id') if raw_parent_id is not None else None
+    except BadRequest as exc:
+        return error(400, exc.description)
+    tags = data.get('tags') or []
+
+    def operation():
+        try:
+            created = put_node(node_id_int, label, description, is_container, parent_id, tags)
+        except ValueError as exc:
+            return error(400, str(exc))
+        return _node_response(node_id_int, 201 if created else 200)
+
+    return _idempotent(data, operation)
+
+
+def delete_node_endpoint(node_id: str, idempotency_key: str | None = None) -> Response:  # noqa: ARG001
+    node_id_int = _decode_id(node_id, 'node_id')
+
+    def operation():
+        delete_op = delete_node(node_id_int)
+        if delete_op is None:
+            return error(404, 'Node not found')
+        object_count, edge_count, tag_count, node_count = delete_op
+        return jsonify(
+            {
+                'deleted': {
+                    'total': object_count,
+                    'edges': edge_count,
+                    'tags': tag_count,
+                    'nodes': node_count,
+                },
+            }
         )
-    except ValueError as ve:
-        logger.error(f'Validation error in patch_node_update for node {node_id}: {ve}')
-        return error(400, str(ve))
 
-    if not found:
-        return error(404, 'Node not found')
-
-    # Return updated representation
-    row = fetch_node(node_id_int)
-    if row is None:
-        logger.error('fetch_node returned None after update succeeded for node_id=%d', node_id_int)
-        return error(500, 'Internal server error')
-    parent_id_int = fetch_parent_id(node_id_int)
-    children = fetch_children(node_id_int)
-    tags = fetch_tags_for_node(node_id_int)
-
-    node = node_row_to_dict(row)
-    node['parent_id'] = base62.encode(parent_id_int) if parent_id_int is not None else None
-    node['children'] = children
-    node['tags'] = tags
-
-    return jsonify(node)
-
-
-def delete_node_endpoint(node_id: str) -> Response:
-    delete_op = delete_node(_decode_id(node_id, 'node_id'))
-
-    if delete_op is None:
-        return error(404, 'Node not found')
-
-    object_count, edge_count, tag_count, node_count = delete_op
-
-    return jsonify(
-        {
-            'deleted': {
-                'total': object_count,
-                'edges': edge_count,
-                'tags': tag_count,
-                'nodes': node_count,
-            },
-        }
-    )
+    return _idempotent({}, operation)

@@ -4,7 +4,7 @@ class TestTagCreate:
         assert resp.status_code == 201
         body = resp.json()
         assert body['name'] == 'electronics'
-        assert body['id'] is not None
+        assert 'id' not in body
         assert body['created_at'] is not None
         assert body['updated_at'] is not None
 
@@ -17,27 +17,32 @@ class TestTagCreate:
         resp = client.post('/v1/tags', json={}, headers=authed_headers)
         assert resp.status_code == 400
 
+    def test_create_rejects_non_path_safe_names(self, client, authed_headers):
+        for name in ('not/safe', 'Uppercase', 'has space', 'digits1', '_underscore'):
+            resp = client.post('/v1/tags', json={'name': name}, headers=authed_headers)
+            assert resp.status_code == 400
+
 
 class TestTagGet:
     def test_get_detail_no_nodes(self, client, make_tag, authed_headers):
-        tag_id = make_tag('lonely')
-        resp = client.get(f'/v1/tags/{tag_id}', headers=authed_headers)
+        tag_name = make_tag('lonely')
+        resp = client.get(f'/v1/tags/{tag_name}', headers=authed_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body['name'] == 'lonely'
         assert body['nodes'] == []
 
     def test_get_detail_with_nodes(self, client, make_node, make_tag, authed_headers):
-        tag_id = make_tag('used')
-        node_id = make_node('item', tag_ids=[tag_id])
-        resp = client.get(f'/v1/tags/{tag_id}', headers=authed_headers)
+        tag_name = make_tag('used')
+        node_id = make_node('item', tags=[tag_name])
+        resp = client.get(f'/v1/tags/{tag_name}', headers=authed_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert len(body['nodes']) == 1
         assert body['nodes'][0]['id'] == node_id
 
     def test_get_not_found(self, client, authed_headers):
-        resp = client.get('/v1/tags/99999', headers=authed_headers)
+        resp = client.get('/v1/tags/missing', headers=authed_headers)
         assert resp.status_code == 404
 
 
@@ -72,29 +77,29 @@ class TestTagList:
 
 class TestTagPatch:
     def test_patch_rename(self, client, make_tag, authed_headers):
-        tag_id = make_tag('oldname')
-        resp = client.patch(f'/v1/tags/{tag_id}', json={'name': 'newname'}, headers=authed_headers)
+        make_tag('oldname')
+        resp = client.patch('/v1/tags/oldname', json={'name': 'newname'}, headers=authed_headers)
         assert resp.status_code == 200
         assert resp.json()['name'] == 'newname'
 
     def test_patch_rename_conflict(self, client, make_tag, authed_headers):
         make_tag('taken')
-        tag_id = make_tag('other')
-        resp = client.patch(f'/v1/tags/{tag_id}', json={'name': 'taken'}, headers=authed_headers)
+        make_tag('other')
+        resp = client.patch('/v1/tags/other', json={'name': 'taken'}, headers=authed_headers)
         assert resp.status_code == 409
 
     def test_patch_missing_name(self, client, make_tag, authed_headers):
-        tag_id = make_tag('sometag')
-        resp = client.patch(f'/v1/tags/{tag_id}', json={}, headers=authed_headers)
+        make_tag('sometag')
+        resp = client.patch('/v1/tags/sometag', json={}, headers=authed_headers)
         assert resp.status_code == 400
 
     def test_patch_empty_name(self, client, make_tag, authed_headers):
-        tag_id = make_tag('sometag')
-        resp = client.patch(f'/v1/tags/{tag_id}', json={'name': ''}, headers=authed_headers)
+        make_tag('sometag')
+        resp = client.patch('/v1/tags/sometag', json={'name': ''}, headers=authed_headers)
         assert resp.status_code == 400
 
     def test_patch_not_found(self, client, authed_headers):
-        resp = client.patch('/v1/tags/99999', json={'name': 'x'}, headers=authed_headers)
+        resp = client.patch('/v1/tags/missing', json={'name': 'x'}, headers=authed_headers)
         assert resp.status_code == 404
 
 
@@ -106,17 +111,17 @@ class TestTagDeleteUnauthenticated:
 
 class TestTagDelete:
     def test_delete_success(self, client, make_tag, make_node, authed_headers):
-        tag_id = make_tag('disposable')
-        node_id = make_node('item', tag_ids=[tag_id])
+        tag_name = make_tag('disposable')
+        node_id = make_node('item', tags=[tag_name])
 
-        resp = client.delete(f'/v1/tags/{tag_id}', headers=authed_headers)
+        resp = client.delete(f'/v1/tags/{tag_name}', headers=authed_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body['deleted']['total'] == 2  # 1 tag + 1 association
         assert body['deleted']['associations'] == 1
 
         # Tag is gone
-        resp = client.get(f'/v1/tags/{tag_id}', headers=authed_headers)
+        resp = client.get(f'/v1/tags/{tag_name}', headers=authed_headers)
         assert resp.status_code == 404
 
         # Node still exists, tag association removed
@@ -125,15 +130,15 @@ class TestTagDelete:
         assert resp.json()['tags'] == []
 
     def test_delete_tag_no_associations(self, client, make_tag, authed_headers):
-        tag_id = make_tag('unused')
-        resp = client.delete(f'/v1/tags/{tag_id}', headers=authed_headers)
+        tag_name = make_tag('unused')
+        resp = client.delete(f'/v1/tags/{tag_name}', headers=authed_headers)
         assert resp.status_code == 200
         body = resp.json()
         assert body['deleted']['total'] == 1
         assert body['deleted']['associations'] == 0
 
     def test_delete_not_found(self, client, authed_headers):
-        resp = client.delete('/v1/tags/99999', headers=authed_headers)
+        resp = client.delete('/v1/tags/missing', headers=authed_headers)
         assert resp.status_code == 404
 
 

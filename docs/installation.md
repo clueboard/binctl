@@ -87,7 +87,7 @@ uv sync
 # Run checks
 uv run pytest
 uv run ruff check
-uv run ty check
+PYTHONPATH=.:binctl-client uv run ty check
 ```
 
 See [Development](development.md) for more on the project's tooling and CI checks.

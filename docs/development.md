@@ -15,7 +15,7 @@ uv sync
 # Run checks
 uv run pytest
 uv run ruff check
-uv run ty check
+PYTHONPATH=.:binctl-client uv run ty check
 ```
 
 ## Tests / CI
@@ -25,7 +25,7 @@ The following must pass before merging (run with the venv activated, or via `uv 
 ```bash
 pytest
 ruff check
-ty check
+PYTHONPATH=.:binctl-client ty check
 ```
 
 CI (`.github/workflows/ci.yml`) runs `genclient.sh`, `uv sync`, `ruff check`, `ruff format

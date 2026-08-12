@@ -46,14 +46,13 @@ class TestMultiClientWrites:
         headers = {'Authorization': f'Bearer {auth_token}'}
         client1 = app.test_client()
 
-        tag_resp = client1.post('/v1/tags', json={'name': 'durable'}, headers=headers)
-        tag_id = tag_resp.json()['id']
+        client1.post('/v1/tags', json={'name': 'durable'}, headers=headers)
 
         node_resp = client1.post('/v1/nodes', json={'label': 'item'}, headers=headers)
         node_id = node_resp.json()['id']
 
-        r1 = client1.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [tag_id]}, headers=headers)
-        r2 = client1.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [tag_id]}, headers=headers)
+        r1 = client1.patch(f'/v1/nodes/{node_id}', json={'tags': ['durable']}, headers=headers)
+        r2 = client1.patch(f'/v1/nodes/{node_id}', json={'tags': ['durable']}, headers=headers)
         assert r1.status_code == 200
         assert r2.status_code == 200
         assert r1.json()['tags'] == r2.json()['tags']

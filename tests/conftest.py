@@ -63,6 +63,8 @@ def engine():
 def clean_db(engine):
     with engine.connect() as conn:
         # Delete in dependency order so FK constraints are satisfied
+        conn.execute(text('DELETE FROM idempotency_keys'))
+        conn.execute(text('UPDATE idempotency_lock SET enabled = 0 WHERE id = 1'))
         conn.execute(text('DELETE FROM tokens'))
         conn.execute(text('DELETE FROM users'))
         conn.execute(text('DELETE FROM tag_node'))
@@ -105,6 +107,6 @@ def make_tag(client, authed_headers):
     def _inner(name='test tag'):
         resp = client.post('/v1/tags', json={'name': name}, headers=authed_headers)
         assert resp.status_code == 201, resp.json()
-        return resp.json()['id']
+        return resp.json()['name']
 
     return _inner

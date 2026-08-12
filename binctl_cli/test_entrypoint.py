@@ -15,11 +15,13 @@ def _make_cli_args(**kwargs):
         'is_container': None,
         'parent_id': None,
         'no_parent': False,
-        'tag_id': None,
+        'tag': None,
+        'tag_name': None,
         'name': None,
         'node_id': None,
         'output': 'json',
         'verbose': False,
+        'idempotency_key': None,
     }
     defaults.update(kwargs)
     return types.SimpleNamespace(**defaults)
@@ -51,7 +53,7 @@ class TestNodeCreate(unittest.TestCase):
                 mock_sync.return_value = _mock_response()
                 import binctl_cli.entrypoint as bc
 
-                with patch.object(bc, 'cli', _make_cli(_make_cli_args(label='test', tag_id=[]))):
+                with patch.object(bc, 'cli', _make_cli(_make_cli_args(label='test', tag=[]))):
                     bc._node_create()
 
                 _, kwargs = mock_sync.call_args
@@ -95,7 +97,7 @@ class TestTagUpdate(unittest.TestCase):
             mock_sync.return_value = _mock_response()
             import binctl_cli.entrypoint as bc
 
-            with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='renamed', tag_id='1'))):
+            with patch.object(bc, 'cli', _make_cli(_make_cli_args(name='renamed', tag_name='old'))):
                 bc._tag_update()
 
             _, kwargs = mock_sync.call_args

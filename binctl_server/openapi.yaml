@@ -41,6 +41,8 @@ paths:
       operationId: post_node_create
       tags: [nodes]
       summary: Create a new node
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -81,6 +83,8 @@ paths:
       operationId: patch_node_update
       tags: [nodes]
       summary: Update an existing node
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -96,11 +100,39 @@ paths:
                 $ref: "#/components/schemas/Node"
         "404":
           description: Node not found
+    put:
+      x-openapi-router-controller: binctl_server.routes
+      operationId: put_node_upsert
+      tags: [nodes]
+      summary: Create or fully replace a node with a client-supplied ID
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeReplace"
+      responses:
+        "200":
+          description: Node replaced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
+        "201":
+          description: Node created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Node"
     delete:
       x-openapi-router-controller: binctl_server.routes
       operationId: delete_node_endpoint
       tags: [nodes]
       summary: Delete a node
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: Node deleted
@@ -163,6 +195,8 @@ paths:
       operationId: post_tag_create
       tags: [tags]
       summary: Create a tag
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -177,18 +211,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/Tag"
 
-  /v1/tags/{tag_id}:
+  /v1/tags/{tag_name}:
     parameters:
       - in: path
-        name: tag_id
+        name: tag_name
         required: true
         schema:
           type: string
+          pattern: "^[a-z-]+$"
     get:
       x-openapi-router-controller: binctl_server.routes
       operationId: get_tag_detail
       tags: [tags]
-      summary: Get tag by ID
+      summary: Get tag by name
       responses:
         "200":
           description: Tag
@@ -203,6 +238,8 @@ paths:
       operationId: patch_tag_update
       tags: [tags]
       summary: Update a tag
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -223,6 +260,8 @@ paths:
       operationId: delete_tag_endpoint
       tags: [tags]
       summary: Delete a tag
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
         "200":
           description: Tag deleted
@@ -245,6 +284,44 @@ paths:
                         type: integer
         "404":
           description: Tag not found
+
+  /v1/lock:
+    get:
+      x-openapi-router-controller: binctl_server.routes
+      operationId: get_lock
+      tags: [config]
+      summary: Get database-wide idempotency mode
+      responses:
+        "200":
+          description: Current mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdempotencyLock"
+    put:
+      x-openapi-router-controller: binctl_server.routes
+      operationId: enable_lock
+      tags: [config]
+      summary: Enable database-wide idempotency mode
+      responses:
+        "200":
+          description: Mode enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdempotencyLock"
+    delete:
+      x-openapi-router-controller: binctl_server.routes
+      operationId: disable_lock
+      tags: [config]
+      summary: Disable database-wide idempotency mode
+      responses:
+        "200":
+          description: Mode disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdempotencyLock"
 
   /v1/config:
     get:
@@ -296,6 +373,15 @@ paths:
           description: Logged out successfully
 
 components:
+  parameters:
+    IdempotencyKey:
+      in: header
+      name: Idempotency-Key
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
   securitySchemes:
     bearerAuth:
       type: http
@@ -303,6 +389,13 @@ components:
       x-bearerInfoFunc: binctl_server.auth_operations.lookup_token
 
   schemas:
+
+    IdempotencyLock:
+      type: object
+      required: [enabled]
+      properties:
+        enabled:
+          type: boolean
 
     NodePage:
       type: object
@@ -351,10 +444,35 @@ components:
         parent_id:
           type: string
           nullable: true
-        tag_ids:
+        tags:
           type: array
           items:
             type: string
+          default: []
+
+    NodeReplace:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        is_container:
+          type: boolean
+          default: false
+        parent_id:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 255
           default: []
 
     NodeUpdate:
@@ -372,10 +490,12 @@ components:
         parent_id:
           type: string
           nullable: true
-        tag_ids:
+        tags:
           type: array
           items:
             type: string
+            minLength: 1
+            maxLength: 255
 
     Node:
       type: object
@@ -406,7 +526,7 @@ components:
         tags:
           type: array
           items:
-            $ref: "#/components/schemas/Tag"
+            type: string
 
     NodeChild:
       type: object
@@ -439,6 +559,7 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+          pattern: "^[a-z-]+$"
     TagUpdate:
       type: object
       required: [name]
@@ -447,15 +568,15 @@ components:
           type: string
           minLength: 1
           maxLength: 255
+          pattern: "^[a-z-]+$"
 
     Tag:
       type: object
-      required: [id, name, created_at, updated_at]
+      required: [name, created_at, updated_at]
       properties:
-        id:
-          type: string
         name:
           type: string
+          pattern: "^[a-z-]+$"
         created_at:
           type: string
           format: date-time

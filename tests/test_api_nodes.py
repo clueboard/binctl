@@ -44,23 +44,25 @@ class TestNodeCreate:
         assert resp.status_code == 400
 
     def test_create_with_tags(self, client, make_node, make_tag, authed_headers):
-        t1 = make_tag('electronics')
-        t2 = make_tag('fragile')
-        resp = client.post('/v1/nodes', json={'label': 'laptop', 'tag_ids': [t1, t2]}, headers=authed_headers)
+        resp = client.post('/v1/nodes', json={'label': 'laptop', 'tags': ['electronics', 'fragile']}, headers=authed_headers)
         assert resp.status_code == 201
-        tag_names = {t['name'] for t in resp.json()['tags']}
-        assert tag_names == {'electronics', 'fragile'}
+        assert set(resp.json()['tags']) == {'electronics', 'fragile'}
 
-    def test_create_nonexistent_tag(self, client, authed_headers):
-        resp = client.post('/v1/nodes', json={'label': 'item', 'tag_ids': [99999]}, headers=authed_headers)
-        assert resp.status_code == 400
+    def test_create_automatically_creates_tag(self, client, authed_headers):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'tags': ['new-tag']}, headers=authed_headers)
+        assert resp.status_code == 201
+        assert resp.json()['tags'] == ['new-tag']
 
     def test_create_with_integer_parent_id(self, client, authed_headers):
         resp = client.post('/v1/nodes', json={'label': 'item', 'parent_id': 123}, headers=authed_headers)
         assert resp.status_code == 400
 
-    def test_create_with_null_tag_id(self, client, authed_headers):
-        resp = client.post('/v1/nodes', json={'label': 'item', 'tag_ids': [None]}, headers=authed_headers)
+    def test_create_with_null_tag(self, client, authed_headers):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'tags': [None]}, headers=authed_headers)
+        assert resp.status_code == 400
+
+    def test_create_rejects_invalid_automatic_tag(self, client, authed_headers):
+        resp = client.post('/v1/nodes', json={'label': 'item', 'tags': ['not/safe']}, headers=authed_headers)
         assert resp.status_code == 400
 
 
@@ -69,8 +71,8 @@ class TestNodeGet:
         container_id = make_node('room', is_container=True)
         child_id = make_node('shelf', is_container=True, parent_id=container_id)
         grandchild_id = make_node('box', parent_id=child_id)  # noqa: F841
-        tag_id = make_tag('storage')
-        client.patch(f'/v1/nodes/{child_id}', json={'tag_ids': [tag_id]}, headers=authed_headers)
+        make_tag('storage')
+        client.patch(f'/v1/nodes/{child_id}', json={'tags': ['storage']}, headers=authed_headers)
 
         resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
         assert resp.status_code == 200
@@ -80,7 +82,7 @@ class TestNodeGet:
         assert len(body['children']) == 1
         assert body['children'][0]['id'] == grandchild_id
         assert body['children'][0]['parent_id'] == child_id
-        assert body['tags'][0]['name'] == 'storage'
+        assert body['tags'] == ['storage']
 
     def test_get_not_found(self, client, authed_headers):
         resp = client.get('/v1/nodes/99999', headers=authed_headers)
@@ -147,9 +149,42 @@ class TestNodePatch:
         resp = client.patch(f'/v1/nodes/{node_id}', json={'parent_id': 123}, headers=authed_headers)
         assert resp.status_code == 400
 
-    def test_patch_with_null_tag_id(self, client, make_node, authed_headers):
+
+class TestNodePut:
+    def test_put_creates_with_client_id(self, client, authed_headers):
+        node_id = base62.encode((123456789 << 12) | 42)
+        resp = client.put(
+            f'/v1/nodes/{node_id}',
+            json={'label': 'offline', 'description': 'queued', 'is_container': True, 'tags': ['new', 'offline']},
+            headers=authed_headers,
+        )
+        assert resp.status_code == 201
+        assert resp.json()['id'] == node_id
+        assert resp.json()['tags'] == ['new', 'offline']
+
+    def test_put_replaces_complete_state(self, client, make_node, authed_headers):
+        parent_id = make_node('parent', is_container=True)
+        node_id = make_node('old', description='old', is_container=True, parent_id=parent_id, tags=['old'])
+        resp = client.put(f'/v1/nodes/{node_id}', json={'label': 'new'}, headers=authed_headers)
+        assert resp.status_code == 200
+        assert resp.json()['description'] is None
+        assert resp.json()['is_container'] is False
+        assert resp.json()['parent_id'] is None
+        assert resp.json()['tags'] == []
+
+    def test_put_rejects_noncanonical_and_overflow_ids(self, client, authed_headers):
+        assert client.put('/v1/nodes/01', json={'label': 'bad'}, headers=authed_headers).status_code == 400
+        overflow = base62.encode(1 << 63)
+        assert client.put(f'/v1/nodes/{overflow}', json={'label': 'bad'}, headers=authed_headers).status_code == 400
+
+    def test_put_requires_existing_parent(self, client, authed_headers):
+        node_id = base62.encode((123456790 << 12) | 42)
+        resp = client.put(f'/v1/nodes/{node_id}', json={'label': 'child', 'parent_id': 'abc'}, headers=authed_headers)
+        assert resp.status_code == 400
+
+    def test_patch_with_null_tag(self, client, make_node, authed_headers):
         node_id = make_node('item')
-        resp = client.patch(f'/v1/nodes/{node_id}', json={'tag_ids': [None]}, headers=authed_headers)
+        resp = client.patch(f'/v1/nodes/{node_id}', json={'tags': [None]}, headers=authed_headers)
         assert resp.status_code == 400
 
 
@@ -157,9 +192,9 @@ class TestNodeDelete:
     def test_delete_success(self, client, make_node, make_tag, authed_headers):
         container_id = make_node('container', is_container=True)
         child_id = make_node('child', parent_id=container_id)
-        tag_id = make_tag('tag')
+        tag_name = make_tag('tag')
         # Add tag to child
-        client.patch(f'/v1/nodes/{child_id}', json={'tag_ids': [tag_id]}, headers=authed_headers)
+        client.patch(f'/v1/nodes/{child_id}', json={'tags': [tag_name]}, headers=authed_headers)
 
         # Delete the child
         resp = client.delete(f'/v1/nodes/{child_id}', headers=authed_headers)
@@ -175,7 +210,7 @@ class TestNodeDelete:
         assert len(resp.json()['children']) == 0
 
         # Verify tag association is gone (optional, but good for thoroughness)
-        resp = client.get(f'/v1/tags/{tag_id}', headers=authed_headers)
+        resp = client.get(f'/v1/tags/{tag_name}', headers=authed_headers)
         assert resp.status_code == 200
         assert len(resp.json()['nodes']) == 0
 

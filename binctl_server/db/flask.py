@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -31,19 +32,24 @@ def get_db() -> Connection:
 
 @contextmanager
 def transactional() -> Iterator[Connection]:
-    """Wrap the current Flask-g connection in a commit/rollback block.
-
-    WARNING: Nesting transactional() is not supported. The inner call reuses
-    the same connection and commits on exit, which may commit data the outer
-    caller expected to hold until its own exit. Do not nest transactional().
-    """
+    """Wrap the Flask-g connection in a nestable transaction scope."""
     conn = get_db()
+    depth = g.get('transaction_depth', 0)
+    g.transaction_depth = depth + 1
+    owns_transaction = depth == 0 and not g.get('managed_transaction')
     try:
         yield conn
-        conn.commit()
+        if owns_transaction:
+            conn.commit()
     except Exception:
-        conn.rollback()
+        if owns_transaction:
+            conn.rollback()
         raise
+    finally:
+        if depth:
+            g.transaction_depth = depth
+        else:
+            g.pop('transaction_depth', None)
 
 
 # --------------------------------------------------------------------
@@ -83,7 +89,6 @@ def node_row_to_dict(row: RowMapping) -> dict:
 def tag_row_to_dict(row: RowMapping) -> dict:
     """Serialize a tags row to a plain dict suitable for JSON responses."""
     return {
-        'id': base62.encode(row['id']),
         'name': row['name'],
         'created_at': iso(row['created_at']),
         'updated_at': iso(row['updated_at']),
@@ -164,14 +169,14 @@ def node_has_children(node_id: int) -> bool:
     )
 
 
-def fetch_tags_for_node(node_id: int) -> list[dict]:
-    """Return serialized tag dicts for all tags attached to *node_id*."""
+def fetch_tags_for_node(node_id: int) -> list[str]:
+    """Return tag names attached to *node_id*."""
     rows = (
         get_db()
         .execute(
             text(
                 """
-            SELECT t.id, t.name, t.created_at, t.updated_at
+            SELECT t.name
             FROM tag_node tn
             JOIN tags t ON t.id = tn.tag_id
             WHERE tn.node_id = :id
@@ -183,7 +188,7 @@ def fetch_tags_for_node(node_id: int) -> list[dict]:
         .mappings()
         .all()
     )
-    return [tag_row_to_dict(r) for r in rows]
+    return [r['name'] for r in rows]
 
 
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
@@ -247,10 +252,40 @@ def set_parent(node_id: int, parent_id: int | None) -> None:
         )
 
 
-def replace_node_tags(node_id: int, tag_ids: list[int]) -> None:
-    """Replace all tag associations for *node_id* with *tag_ids*."""
+def _validate_tag_name(name: str) -> None:
+    if not name:
+        raise ValueError('tag names cannot be empty')
+    if len(name) > 255:
+        raise ValueError('tag names must be 255 characters or fewer')
+    if re.fullmatch(r'[a-z-]+', name) is None:
+        raise ValueError('tag names may contain only lowercase letters and hyphens')
+
+
+def ensure_tag(name: str) -> int:
+    """Return the internal ID for *name*, creating the tag if needed."""
+    _validate_tag_name(name)
+    conn = get_db()
+    row = conn.execute(text('SELECT id FROM tags WHERE name = :name'), {'name': name}).mappings().first()
+    if row:
+        return row['id']
+    for _ in range(5):
+        tag_id = new_id()
+        try:
+            with conn.begin_nested():
+                conn.execute(text('INSERT INTO tags (id, name) VALUES (:id, :name)'), {'id': tag_id, 'name': name})
+            return tag_id
+        except IntegrityError:
+            row = conn.execute(text('SELECT id FROM tags WHERE name = :name'), {'name': name}).mappings().first()
+            if row:
+                return row['id']
+    raise RuntimeError('could not allocate a unique tag ID')
+
+
+def replace_node_tags(node_id: int, tag_names: list[str]) -> None:
+    """Replace all tag associations, creating missing tag names."""
     conn = get_db()
     conn.execute(text('DELETE FROM tag_node WHERE node_id = :node_id'), {'node_id': node_id})
+    tag_ids = [ensure_tag(name) for name in dict.fromkeys(tag_names)]
     if tag_ids:
         conn.execute(
             text('INSERT INTO tag_node (tag_id, node_id) VALUES (:tag_id, :node_id)'),
@@ -290,33 +325,38 @@ def create_node(
     description: str | None,
     is_container: bool,
     *,
+    node_id: int | None = None,
     parent_id: int | None = None,
-    tag_ids: list[int] | None = None,
+    tags: list[str] | None = None,
 ) -> int:
     """Insert a new node and return its id.
 
     Optionally assigns a parent and attaches tags in the same transaction.
-    Raises ValueError for invalid parent_id or unknown tag_ids.
     """
     with transactional():
-        node_id = new_id()
-        get_db().execute(
-            text(
-                """
-                INSERT INTO nodes (id, label, description, is_container)
-                VALUES (:id, :label, :description, :is_container)
-                """
-            ),
-            {'id': node_id, 'label': label, 'description': description, 'is_container': db_bool(is_container)},
-        )
+        generated = node_id is None
+        for attempt in range(5):
+            candidate = new_id() if generated else node_id
+            try:
+                with get_db().begin_nested():
+                    get_db().execute(
+                        text('INSERT INTO nodes (id, label, description, is_container) VALUES (:id, :label, :description, :is_container)'),
+                        {'id': candidate, 'label': label, 'description': description, 'is_container': db_bool(is_container)},
+                    )
+                node_id = candidate
+                break
+            except IntegrityError:
+                if not generated:
+                    assert candidate is not None
+                    raise ValueError(f"Node with id '{base62.encode(candidate)}' already exists")
+                if attempt == 4:
+                    raise RuntimeError('could not allocate a unique node ID')
+        assert node_id is not None
         if parent_id is not None:
             ensure_parent_is_valid(parent_id)
             set_parent(node_id, parent_id)
-        if tag_ids:
-            try:
-                replace_node_tags(node_id, tag_ids)
-            except IntegrityError:
-                raise ValueError('One or more tag_ids do not exist')
+        if tags:
+            replace_node_tags(node_id, tags)
     return node_id
 
 
@@ -345,8 +385,8 @@ def update_node(
     *,
     parent_provided: bool = False,
     parent_id: int | None = None,
-    tag_ids_provided: bool = False,
-    tag_ids: list[int] | None = None,
+    tags_provided: bool = False,
+    tags: list[str] | None = None,
 ) -> bool:
     """Update a node's fields, parent, and/or tags atomically. Returns False if node not found."""
     with transactional():
@@ -361,12 +401,29 @@ def update_node(
                 return False
         if parent_provided:
             set_parent(node_id, parent_id)
-        if tag_ids_provided:
-            try:
-                replace_node_tags(node_id, tag_ids or [])
-            except IntegrityError:
-                raise ValueError('One or more tag_ids do not exist')
+        if tags_provided:
+            replace_node_tags(node_id, tags or [])
     return True
+
+
+def put_node(node_id: int, label: str, description: str | None, is_container: bool, parent_id: int | None, tags: list[str]) -> bool:
+    """Create or fully replace a node. Return True when created."""
+    with transactional():
+        created = fetch_node(node_id) is None
+        if created:
+            create_node(label, description, is_container, node_id=node_id, parent_id=parent_id, tags=tags)
+            return True
+        if not is_container and node_has_children(node_id):
+            raise ValueError('cannot set is_container=false on a node that has children')
+        if parent_id is not None:
+            ensure_parent_is_valid(parent_id, child_id=node_id)
+        get_db().execute(
+            text('UPDATE nodes SET label = :label, description = :description, is_container = :is_container, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
+            {'id': node_id, 'label': label, 'description': description, 'is_container': db_bool(is_container)},
+        )
+        set_parent(node_id, parent_id)
+        replace_node_tags(node_id, tags)
+        return False
 
 
 class _NotFound(Exception):
@@ -483,13 +540,13 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
 # --------------------------------------------------------------------
 
 
-def fetch_tag(tag_id: int) -> RowMapping | None:
-    """Return the tags row for *tag_id*, or None if it does not exist."""
+def fetch_tag(name: str) -> RowMapping | None:
+    """Return the tag row for *name*, or None if it does not exist."""
     return (
         get_db()
         .execute(
-            text('SELECT id, name, created_at, updated_at FROM tags WHERE id = :id'),
-            {'id': tag_id},
+            text('SELECT id, name, created_at, updated_at FROM tags WHERE name = :name'),
+            {'name': name},
         )
         .mappings()
         .first()
@@ -521,8 +578,8 @@ def fetch_tags_page(limit: int, offset: int) -> Sequence[RowMapping]:
     )
 
 
-def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
-    """Return all node rows tagged with *tag_id*, ordered by node id."""
+def fetch_nodes_for_tag(name: str) -> Sequence[RowMapping]:
+    """Return all node rows tagged with *name*, ordered by node id."""
     return (
         get_db()
         .execute(
@@ -532,11 +589,12 @@ def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
                    n.created_at, n.updated_at
             FROM tag_node tn
             JOIN nodes n ON n.id = tn.node_id
-            WHERE tn.tag_id = :id
+            JOIN tags t ON t.id = tn.tag_id
+            WHERE t.name = :name
             ORDER BY n.id
             """
             ),
-            {'id': tag_id},
+            {'name': name},
         )
         .mappings()
         .all()
@@ -545,32 +603,35 @@ def fetch_nodes_for_tag(tag_id: int) -> Sequence[RowMapping]:
 
 def create_tag(name: str) -> int:
     """Insert a new tag with *name* and return its id. Raises ValueError on duplicate name."""
-    tag_id = new_id()
-    try:
-        with transactional():
-            get_db().execute(text('INSERT INTO tags (id, name) VALUES (:id, :name)'), {'id': tag_id, 'name': name})
-    except IntegrityError:
-        raise ValueError(f"Tag with name '{name}' already exists")
-    return tag_id
+    _validate_tag_name(name)
+    with transactional():
+        if fetch_tag(name):
+            raise ValueError(f"Tag with name '{name}' already exists")
+        return ensure_tag(name)
 
 
-def update_tag(tag_id: int, name: str) -> int:
-    """Rename *tag_id* to *name*. Returns rowcount; raises ValueError on duplicate name."""
+def update_tag(old_name: str, name: str) -> int:
+    """Rename *old_name* to *name*. Returns rowcount; raises on duplicate name."""
+    _validate_tag_name(name)
     try:
         with transactional():
             result = get_db().execute(
-                text('UPDATE tags SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE id = :id'),
-                {'name': name, 'id': tag_id},
+                text('UPDATE tags SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE name = :old_name'),
+                {'name': name, 'old_name': old_name},
             )
     except IntegrityError:
         raise ValueError(f"Tag with name '{name}' already exists")
     return result.rowcount
 
 
-def delete_tag(tag_id: int) -> tuple[int, int] | None:
+def delete_tag(name: str) -> tuple[int, int] | None:
     """Deletes a tag and its node associations. Returns (total, node_count) or None if not found."""
     try:
         with transactional() as conn:
+            row = conn.execute(text('SELECT id FROM tags WHERE name = :name'), {'name': name}).mappings().first()
+            if row is None:
+                raise _NotFound
+            tag_id = row['id']
             result = conn.execute(text('DELETE FROM tag_node WHERE tag_id = :tag_id'), {'tag_id': tag_id})
             node_count = result.rowcount
             logger.debug('Deleted %d node associations for tag %d.', node_count, tag_id)
