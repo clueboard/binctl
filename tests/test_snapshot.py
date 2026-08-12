@@ -8,7 +8,7 @@ def test_snapshot_requires_authentication(client):
 def test_empty_snapshot(client, authed_headers):
     response = client.get('/v1/snapshot', headers=authed_headers)
     assert response.status_code == 200
-    assert response.json() == {'nodes': []}
+    assert response.json() == {'nodes': [], 'event_cursor': 0}
 
 
 def test_snapshot_contains_complete_graph(client, make_node, make_tag, authed_headers):
@@ -54,5 +54,6 @@ def test_snapshot_uses_one_database_statement(client, make_node, authed_headers,
         event.remove(engine, 'before_cursor_execute', record_statement)
 
     assert response.status_code == 200
-    snapshot_queries = [statement for statement in statements if 'FROM nodes n' in statement]
+    snapshot_queries = [statement for statement in statements if 'FROM event_sequence s' in statement]
     assert len(snapshot_queries) == 1
+    assert 'LEFT JOIN nodes n' in snapshot_queries[0]

@@ -11,13 +11,15 @@ from dotenv import load_dotenv
 from flask import g, jsonify
 from starlette.middleware.cors import CORSMiddleware
 
+from .event_stream import EventStreamMiddleware
+
 # openapi.yaml ships as package data alongside this module (see [tool.setuptools.package-data]
 # in pyproject.toml) so it's included in the installed wheel.
 # importlib.resources.files() returns a Traversable, which connexion's add_api() doesn't accept,
 # so convert it to a concrete pathlib.Path.
 _OPENAPI_SPEC = pathlib.Path(str(importlib.resources.files('binctl_server') / 'openapi.yaml'))
 _SYSTEM_CONFIG_FILE = pathlib.Path('/etc/binctl.conf')
-_CONFIG_NAMES = ('DATABASE_URL', 'CORS_ORIGINS', 'CORS_MAX_AGE', 'SESSION_LIFETIME_DAYS', 'ORPHAN_LOCATION')
+_CONFIG_NAMES = ('DATABASE_URL', 'CORS_ORIGINS', 'CORS_MAX_AGE', 'SESSION_LIFETIME_DAYS', 'ORPHAN_LOCATION', 'EVENT_RETENTION_LIMIT')
 
 _LOGGING_CONFIG = {
     'version': 1,
@@ -76,6 +78,13 @@ def create_app():
     if database_url:
         os.environ['DATABASE_URL'] = str(database_url)
 
+    event_retention_limit = setting('EVENT_RETENTION_LIMIT')
+    if event_retention_limit is not None:
+        os.environ['EVENT_RETENTION_LIMIT'] = str(event_retention_limit)
+    from .db.events import retention_limit
+
+    retention_limit()
+
     cors_origins_raw = str(setting('CORS_ORIGINS', ''))
     if cors_origins_raw.strip() == '*':
         raise ValueError("CORS_ORIGINS='*' is not allowed; specify explicit origins")
@@ -110,6 +119,7 @@ def create_app():
         allow_headers=['*'],
         max_age=max_age,
     )
+    cx_app.add_middleware(EventStreamMiddleware, position=MiddlewarePosition.BEFORE_CONTEXT)
 
     # App teardown
     cx_app.app.teardown_appcontext(close_db)

@@ -298,7 +298,14 @@ Tags are public unique strings matching `[a-z-]+` rather than public IDs. Node w
 Clients can initialize their local graph with `GET /v1/snapshot`. The authenticated endpoint
 returns every node, including its parent ID and assigned tag names, in deterministic ID order.
 The snapshot is read from one database statement so concurrent writes cannot produce a mixture
-of graph states. Unattached tags are not included.
+of graph states. Unattached tags are not included. The response also includes `event_cursor`.
+
+To receive subsequent inventory changes, connect to authenticated `GET /v1/events` with that
+cursor in the `Last-Event-ID` header. The endpoint replays newer durable events and then remains
+open as a Server-Sent Events stream. If the cursor is older than retained history, the server
+sends `reset-required` and closes the stream; fetch a new snapshot before reconnecting. The
+generated Python package exports synchronous `stream_events()` and asynchronous
+`astream_events()` helpers for this workflow.
 
 ## Troubleshooting
 

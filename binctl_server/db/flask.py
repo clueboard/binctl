@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from ..auth import generate_token, hash_password, hash_token, verify_password_hash
 from . import base62
 from .engine import engine
+from .events import append_event
 from .id_gen import new_id
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,39 @@ def transactional() -> Iterator[Connection]:
             g.transaction_depth = depth
         else:
             g.pop('transaction_depth', None)
+
+
+def idempotency_lock_enabled() -> bool:
+    return bool(get_db().execute(text('SELECT enabled FROM idempotency_lock WHERE id = 1')).scalar_one())
+
+
+def set_idempotency_lock(enabled: bool) -> None:
+    conn = get_db()
+    conn.execute(text('UPDATE idempotency_lock SET enabled = :enabled WHERE id = 1'), {'enabled': db_bool(enabled)})
+    conn.commit()
+
+
+def fetch_idempotency_response(user_id: int, key: str) -> RowMapping | None:
+    return (
+        get_db()
+        .execute(
+            text('SELECT request_hash, response_code, response_body FROM idempotency_keys WHERE user_id = :user_id AND key_value = :key'),
+            {'user_id': user_id, 'key': key},
+        )
+        .mappings()
+        .first()
+    )
+
+
+def save_idempotency_response(user_id: int, key: str, request_hash: str, response_code: int, response_body: str) -> None:
+    get_db().execute(
+        text(
+            'INSERT INTO idempotency_keys '
+            '(user_id, key_value, request_hash, response_code, response_body) '
+            'VALUES (:user_id, :key, :request_hash, :response_code, :response_body)'
+        ),
+        {'user_id': user_id, 'key': key, 'request_hash': request_hash, 'response_code': response_code, 'response_body': response_body},
+    )
 
 
 # --------------------------------------------------------------------
@@ -196,6 +230,33 @@ def fetch_tags_for_node(node_id: int) -> list[str]:
     return [r['name'] for r in rows]
 
 
+def fetch_node_representation(node_id: int) -> dict | None:
+    """Return the canonical event representation of a node."""
+    row = fetch_node(node_id)
+    if row is None:
+        return None
+    node = node_row_to_dict(row)
+    parent_id = fetch_parent_id(node_id)
+    node['parent_id'] = base62.encode(parent_id) if parent_id is not None else None
+    node['children'] = fetch_children(node_id)
+    node['tags'] = fetch_tags_for_node(node_id)
+    return node
+
+
+def _append_node_event(event_type: str, operation: str, node_id: int) -> None:
+    """Append a node event using its current canonical representation."""
+    node = fetch_node_representation(node_id)
+    if node is not None:
+        append_event(get_db(), event_type, {'resource_type': 'node', 'operation': operation, 'resource': node})
+
+
+def _append_parent_updates(parent_ids: set[int | None], *, exclude: set[int] | None = None) -> None:
+    """Append one update for each existing parent whose embedded children changed."""
+    excluded = exclude or set()
+    for parent_id in sorted(parent_id for parent_id in parent_ids if parent_id is not None and parent_id not in excluded):
+        _append_node_event('node.updated', 'updated', parent_id)
+
+
 def ensure_parent_is_valid(parent_id: int, child_id: int | None = None) -> None:
     """
     Validates that parent_id refers to an existing container node.
@@ -278,6 +339,9 @@ def ensure_tag(name: str) -> int:
         try:
             with conn.begin_nested():
                 conn.execute(text('INSERT INTO tags (id, name) VALUES (:id, :name)'), {'id': tag_id, 'name': name})
+            tag = fetch_tag(name)
+            assert tag is not None
+            append_event(conn, 'tag.created', {'resource_type': 'tag', 'operation': 'created', 'resource': tag_row_to_dict(tag)})
             return tag_id
         except IntegrityError:
             row = conn.execute(text('SELECT id FROM tags WHERE name = :name'), {'name': name}).mappings().first()
@@ -325,19 +389,22 @@ def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
     )
 
 
-def fetch_graph_snapshot() -> list[dict]:
-    """Return every node with its parent and tag names from one query."""
+def fetch_graph_snapshot() -> tuple[list[dict], int]:
+    """Return every node and its event cursor from one consistent query."""
     rows = (
         get_db()
         .execute(
             text(
                 """
-            SELECT n.id, n.label, n.description, n.is_container,
+            SELECT s.value AS event_cursor,
+                   n.id, n.label, n.description, n.is_container,
                    n.created_at, n.updated_at, e.parent_id, t.name AS tag_name
-            FROM nodes n
+            FROM event_sequence s
+            LEFT JOIN nodes n ON 1 = 1
             LEFT JOIN edges e ON e.child_id = n.id
             LEFT JOIN tag_node tn ON tn.node_id = n.id
             LEFT JOIN tags t ON t.id = tn.tag_id
+            WHERE s.id = 1
             ORDER BY n.id, t.name
             """
             )
@@ -348,7 +415,10 @@ def fetch_graph_snapshot() -> list[dict]:
 
     nodes: list[dict] = []
     current_id = None
+    cursor = int(rows[0]['event_cursor'])
     for row in rows:
+        if row['id'] is None:
+            continue
         if row['id'] != current_id:
             node = node_row_to_dict(row)
             node['tags'] = []
@@ -356,7 +426,7 @@ def fetch_graph_snapshot() -> list[dict]:
             current_id = row['id']
         if row['tag_name'] is not None:
             nodes[-1]['tags'].append(row['tag_name'])
-    return nodes
+    return nodes, cursor
 
 
 def create_node(
@@ -396,6 +466,8 @@ def create_node(
             set_parent(node_id, parent_id)
         if tags:
             replace_node_tags(node_id, tags)
+        _append_node_event('node.created', 'created', node_id)
+        _append_parent_updates({parent_id})
     return node_id
 
 
@@ -431,6 +503,7 @@ def update_node(
     with transactional():
         if not fetch_node(node_id):
             return False
+        old_parent_id = fetch_parent_id(node_id)
         if 'is_container' in fields and not fields['is_container'] and node_has_children(node_id):
             raise ValueError('cannot set is_container=false on a node that has children')
         if parent_provided and parent_id is not None:
@@ -442,6 +515,9 @@ def update_node(
             set_parent(node_id, parent_id)
         if tags_provided:
             replace_node_tags(node_id, tags or [])
+        new_parent_id = fetch_parent_id(node_id)
+        _append_node_event('node.updated', 'updated', node_id)
+        _append_parent_updates({old_parent_id, new_parent_id})
     return True
 
 
@@ -454,6 +530,7 @@ def put_node(node_id: int, label: str, description: str | None, is_container: bo
             return True
         if not is_container and node_has_children(node_id):
             raise ValueError('cannot set is_container=false on a node that has children')
+        old_parent_id = fetch_parent_id(node_id)
         if parent_id is not None:
             ensure_parent_is_valid(parent_id, child_id=node_id)
         get_db().execute(
@@ -462,6 +539,8 @@ def put_node(node_id: int, label: str, description: str | None, is_container: bo
         )
         set_parent(node_id, parent_id)
         replace_node_tags(node_id, tags)
+        _append_node_event('node.updated', 'updated', node_id)
+        _append_parent_updates({old_parent_id, parent_id})
         return False
 
 
@@ -528,21 +607,26 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
     Returns a (total, edge_count, tag_count, node_count) tuple on success, or
     None if the node does not exist.
     """
-    orphan_location = current_app.config.get('ORPHAN_LOCATION')
-    orphan_parent_id = None
-    has_children = get_db().execute(text('SELECT 1 FROM edges WHERE parent_id = :id LIMIT 1'), {'id': node_id}).first() is not None
-    if orphan_location and has_children:
-        orphan_parent_id = _find_orphan_container(orphan_location)
-        if orphan_parent_id is None:
-            orphan_parent_id = create_node(orphan_location, None, True)
-
-    # If the node being deleted is itself the orphan container, do not attempt
-    # to re-parent its children there — they will be left without a parent instead.
-    if orphan_parent_id == node_id:
-        orphan_parent_id = None
-
     try:
         with transactional() as conn:
+            deleted_resource = fetch_node_representation(node_id)
+            if deleted_resource is None:
+                raise _NotFound
+            old_parent_id = fetch_parent_id(node_id)
+            orphan_location = current_app.config.get('ORPHAN_LOCATION')
+            orphan_parent_id = None
+            has_children = conn.execute(text('SELECT 1 FROM edges WHERE parent_id = :id LIMIT 1'), {'id': node_id}).first() is not None
+            if orphan_location and has_children:
+                orphan_parent_id = _find_orphan_container(orphan_location)
+                if orphan_parent_id is None:
+                    orphan_parent_id = create_node(orphan_location, None, True)
+
+            # Deleting the orphan container itself leaves its children parentless.
+            if orphan_parent_id == node_id:
+                orphan_parent_id = None
+
+            child_rows = conn.execute(text('SELECT child_id FROM edges WHERE parent_id = :id ORDER BY child_id'), {'id': node_id}).mappings().all()
+            child_ids = [row['child_id'] for row in child_rows]
             reassigned = _reassign_children_of_deleted_node(node_id, orphan_parent_id)
             edge_count = reassigned
             object_count = reassigned
@@ -569,6 +653,20 @@ def delete_node(node_id: int) -> tuple[int, int, int, int] | None:
                 raise _NotFound
             object_count += result.rowcount
 
+            for child_id in child_ids:
+                _append_node_event('node.updated', 'updated', child_id)
+            _append_parent_updates({old_parent_id, orphan_parent_id}, exclude={node_id})
+            append_event(
+                conn,
+                'node.deleted',
+                {
+                    'resource_type': 'node',
+                    'operation': 'deleted',
+                    'resource_id': base62.encode(node_id),
+                    'resource': deleted_resource,
+                    'deleted': {'total': object_count, 'edges': edge_count, 'tags': tag_count, 'nodes': result.rowcount},
+                },
+            )
             return object_count, edge_count, tag_count, result.rowcount
     except _NotFound:
         return None
@@ -654,10 +752,30 @@ def update_tag(old_name: str, name: str) -> int:
     _validate_tag_name(name)
     try:
         with transactional():
+            node_rows = (
+                get_db()
+                .execute(
+                    text('SELECT tn.node_id FROM tag_node tn JOIN tags t ON t.id = tn.tag_id WHERE t.name = :name ORDER BY tn.node_id'),
+                    {'name': old_name},
+                )
+                .mappings()
+                .all()
+            )
             result = get_db().execute(
                 text('UPDATE tags SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE name = :old_name'),
                 {'name': name, 'old_name': old_name},
             )
+            if result.rowcount:
+                tag = fetch_tag(name)
+                assert tag is not None
+                append_event(
+                    get_db(),
+                    'tag.updated',
+                    {'resource_type': 'tag', 'operation': 'updated', 'previous_name': old_name, 'resource': tag_row_to_dict(tag)},
+                )
+                for row in node_rows:
+                    _append_node_event('node.updated', 'updated', row['node_id'])
+                _append_parent_updates({fetch_parent_id(row['node_id']) for row in node_rows})
     except IntegrityError:
         raise ValueError(f"Tag with name '{name}' already exists")
     return result.rowcount
@@ -667,10 +785,11 @@ def delete_tag(name: str) -> tuple[int, int] | None:
     """Deletes a tag and its node associations. Returns (total, node_count) or None if not found."""
     try:
         with transactional() as conn:
-            row = conn.execute(text('SELECT id FROM tags WHERE name = :name'), {'name': name}).mappings().first()
+            row = conn.execute(text('SELECT id, name, created_at, updated_at FROM tags WHERE name = :name'), {'name': name}).mappings().first()
             if row is None:
                 raise _NotFound
             tag_id = row['id']
+            node_rows = conn.execute(text('SELECT node_id FROM tag_node WHERE tag_id = :tag_id ORDER BY node_id'), {'tag_id': tag_id}).mappings().all()
             result = conn.execute(text('DELETE FROM tag_node WHERE tag_id = :tag_id'), {'tag_id': tag_id})
             node_count = result.rowcount
             logger.debug('Deleted %d node associations for tag %d.', node_count, tag_id)
@@ -680,6 +799,22 @@ def delete_tag(name: str) -> tuple[int, int] | None:
                 raise _NotFound
             tag_count = result.rowcount
             logger.debug('Deleted tag %d.', tag_id)
+
+            for node_row in node_rows:
+                _append_node_event('node.updated', 'updated', node_row['node_id'])
+            _append_parent_updates({fetch_parent_id(row['node_id']) for row in node_rows})
+
+            append_event(
+                conn,
+                'tag.deleted',
+                {
+                    'resource_type': 'tag',
+                    'operation': 'deleted',
+                    'resource_id': name,
+                    'resource': tag_row_to_dict(row),
+                    'deleted': {'total': node_count + tag_count, 'associations': node_count},
+                },
+            )
 
             return node_count + tag_count, node_count
     except _NotFound:

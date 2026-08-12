@@ -2,5 +2,6 @@
 
 {{ safe_docstring(package_description) }}
 from .client import Client
+from .event_stream import InventoryEvent, ResetRequired, astream_events, stream_events
 
-__all__ = ("Client",)
+__all__ = ("Client", "InventoryEvent", "ResetRequired", "astream_events", "stream_events")

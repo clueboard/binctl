@@ -66,7 +66,7 @@ A ready-to-use unit file is shipped as part of `binctl-server`:
    ```
 
    The unit's `Environment=` lines (`DATABASE_URL`, `CORS_ORIGINS`, `CORS_MAX_AGE`,
-   `SESSION_LIFETIME_DAYS`, `ORPHAN_LOCATION`) are all commented out by default, since binctl
+   `SESSION_LIFETIME_DAYS`, `ORPHAN_LOCATION`, `EVENT_RETENTION_LIMIT`) are all commented out by default, since binctl
    already loads `/srv/binctl/.env` on its own. Uncomment them (or `EnvironmentFile=`) only if
    you'd rather manage configuration through systemd instead of, or in addition to, `.env`.
 

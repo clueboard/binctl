@@ -63,6 +63,8 @@ def engine():
 def clean_db(engine):
     with engine.connect() as conn:
         # Delete in dependency order so FK constraints are satisfied
+        conn.execute(text('DELETE FROM inventory_events'))
+        conn.execute(text('UPDATE event_sequence SET value = 0 WHERE id = 1'))
         conn.execute(text('DELETE FROM idempotency_keys'))
         conn.execute(text('UPDATE idempotency_lock SET enabled = 0 WHERE id = 1'))
         conn.execute(text('DELETE FROM tokens'))

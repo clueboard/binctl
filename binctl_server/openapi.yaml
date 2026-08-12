@@ -337,6 +337,29 @@ paths:
               schema:
                 $ref: "#/components/schemas/GraphSnapshot"
 
+  /v1/events:
+    get:
+      x-openapi-router-controller: binctl_server.routes
+      operationId: get_events
+      tags: [events]
+      summary: Replay inventory events and continue streaming live updates
+      parameters:
+        - in: header
+          name: Last-Event-ID
+          required: true
+          schema:
+            type: string
+            pattern: "^[0-9]+$"
+      responses:
+        "200":
+          description: Server-Sent Events stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "400":
+          description: Invalid event cursor
+
   /v1/config:
     get:
       x-openapi-router-controller: binctl_server.routes
@@ -413,12 +436,48 @@ components:
 
     GraphSnapshot:
       type: object
-      required: [nodes]
+      required: [nodes, event_cursor]
       properties:
         nodes:
           type: array
           items:
             $ref: "#/components/schemas/Node"
+        event_cursor:
+          type: integer
+          minimum: 0
+
+    InventoryEventData:
+      type: object
+      required: [occurred_at, resource_type, operation]
+      properties:
+        occurred_at:
+          type: string
+          format: date-time
+        resource_type:
+          type: string
+          enum: [node, tag]
+        operation:
+          type: string
+          enum: [created, updated, deleted]
+        resource_id:
+          type: string
+        previous_name:
+          type: string
+        resource:
+          type: object
+        deleted:
+          type: object
+
+    ResetRequiredEventData:
+      type: object
+      required: [reason, current_cursor]
+      properties:
+        reason:
+          type: string
+          enum: [event-history-expired]
+        current_cursor:
+          type: integer
+          minimum: 0
 
     NodePage:
       type: object

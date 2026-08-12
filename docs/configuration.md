@@ -57,3 +57,9 @@ SQLite needs no extra driver. MySQL and PostgreSQL need their optional driver in
 | `ORPHAN_LOCATION` | unset | Container label used to receive direct children when their parent container is deleted. If no matching container exists outside the deleted subtree, one is created automatically as a new root container. |
 
 See [Concepts](concepts.md#edges) for more on how deletion and reassignment work.
+
+## Event streaming
+
+| Variable | Default | Description |
+|---|---|---|
+| `EVENT_RETENTION_LIMIT` | `10000` | Maximum number of durable inventory events retained for reconnecting SSE clients. Clients whose cursor predates this window must fetch a new snapshot. |

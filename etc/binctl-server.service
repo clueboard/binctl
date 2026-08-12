@@ -48,6 +48,7 @@ RestartSec=5
 
 # --- Orphan handling ---
 # Environment=ORPHAN_LOCATION=Lost and Found
+# Environment=EVENT_RETENTION_LIMIT=10000
 
 # ---------------------------------------------------------------------------
 # Hardening (optional, safe defaults for a single-purpose service account)

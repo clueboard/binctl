@@ -3,15 +3,12 @@
 
 import getpass
 import os
-from importlib.resources import files
 
 from dotenv import load_dotenv
 from milc import cli
 
 load_dotenv()
 cli.milc_options(name='binctl', config_file='/etc/binctl.conf', env_prefix='')
-
-import sqlalchemy
 
 from . import db
 
@@ -39,15 +36,9 @@ def main(cli):
 @cli.subcommand('Initialize the database schema.')
 def init_db(cli):
     """Apply the v1 SQL schema to the configured database."""
-    from .db.engine import engine
+    from .db.schema import initialize_schema
 
-    sql = files(db).joinpath('v1.sql').read_text()
-    with engine.connect() as conn:
-        for stmt in sql.split(';'):
-            stmt = stmt.strip()
-            if stmt:
-                conn.execute(sqlalchemy.text(stmt))
-        conn.commit()
+    initialize_schema()
     cli.log.info('Database initialized.')
 
 

@@ -4,7 +4,6 @@ import logging
 
 import connexion
 from flask import Response, current_app, g, jsonify, request
-from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.exceptions import BadRequest
 
@@ -18,6 +17,7 @@ from .db.flask import (
     delete_tag,
     fetch_children,
     fetch_graph_snapshot,
+    fetch_idempotency_response,
     fetch_node,
     fetch_nodes_for_tag,
     fetch_nodes_page,
@@ -26,8 +26,11 @@ from .db.flask import (
     fetch_tags_for_node,
     fetch_tags_page,
     get_db,
+    idempotency_lock_enabled,
     node_row_to_dict,
     put_node,
+    save_idempotency_response,
+    set_idempotency_lock,
     tag_row_to_dict,
     update_node,
     update_tag,
@@ -56,7 +59,7 @@ def _idempotent(data: dict, operation) -> Response:
     """Run a mutation and atomically save/replay its successful response."""
     key = request.headers.get('Idempotency-Key')
     conn = get_db()
-    lock_enabled = bool(conn.execute(text('SELECT enabled FROM idempotency_lock WHERE id = 1')).scalar_one())
+    lock_enabled = idempotency_lock_enabled()
     if lock_enabled and key is None:
         conn.rollback()
         return error(428, 'Idempotency-Key is required while the idempotency lock is enabled')
@@ -79,14 +82,7 @@ def _idempotent(data: dict, operation) -> Response:
             return error(409, 'Idempotency-Key was already used for a different request')
         return Response(row['response_body'], status=row['response_code'], mimetype='application/json')
 
-    row = (
-        conn.execute(
-            text('SELECT request_hash, response_code, response_body FROM idempotency_keys WHERE user_id = :user_id AND key_value = :key'),
-            {'user_id': user_id, 'key': key},
-        )
-        .mappings()
-        .first()
-    )
+    row = fetch_idempotency_response(user_id, key)
     if row:
         conn.rollback()
         return replay(row)
@@ -97,32 +93,12 @@ def _idempotent(data: dict, operation) -> Response:
         if not 200 <= response.status_code < 300:
             conn.rollback()
             return response
-        conn.execute(
-            text(
-                'INSERT INTO idempotency_keys '
-                '(user_id, key_value, request_hash, response_code, response_body) '
-                'VALUES (:user_id, :key, :request_hash, :response_code, :response_body)'
-            ),
-            {
-                'user_id': user_id,
-                'key': key,
-                'request_hash': fingerprint,
-                'response_code': response.status_code,
-                'response_body': response.get_data(as_text=True),
-            },
-        )
+        save_idempotency_response(user_id, key, fingerprint, response.status_code, response.get_data(as_text=True))
         conn.commit()
         return response
     except IntegrityError:
         conn.rollback()
-        row = (
-            conn.execute(
-                text('SELECT request_hash, response_code, response_body FROM idempotency_keys WHERE user_id = :user_id AND key_value = :key'),
-                {'user_id': user_id, 'key': key},
-            )
-            .mappings()
-            .first()
-        )
+        row = fetch_idempotency_response(user_id, key)
         conn.rollback()
         if row:
             return replay(row)
@@ -135,21 +111,16 @@ def _idempotent(data: dict, operation) -> Response:
 
 
 def get_lock() -> Response:
-    enabled = bool(get_db().execute(text('SELECT enabled FROM idempotency_lock WHERE id = 1')).scalar_one())
-    return jsonify({'enabled': enabled})
+    return jsonify({'enabled': idempotency_lock_enabled()})
 
 
 def enable_lock() -> Response:
-    conn = get_db()
-    conn.execute(text('UPDATE idempotency_lock SET enabled = 1 WHERE id = 1'))
-    conn.commit()
+    set_idempotency_lock(True)
     return jsonify({'enabled': True})
 
 
 def disable_lock() -> Response:
-    conn = get_db()
-    conn.execute(text('UPDATE idempotency_lock SET enabled = 0 WHERE id = 1'))
-    conn.commit()
+    set_idempotency_lock(False)
     return jsonify({'enabled': False})
 
 
@@ -173,7 +144,12 @@ def get_config() -> Response:
 
 
 def get_snapshot() -> Response:
-    return jsonify({'nodes': fetch_graph_snapshot()})
+    nodes, cursor = fetch_graph_snapshot()
+    return jsonify({'nodes': nodes, 'event_cursor': cursor})
+
+
+def get_events(last_event_id: str) -> Response:  # pragma: no cover - handled by EventStreamMiddleware
+    raise RuntimeError(f'Event stream middleware did not intercept cursor {last_event_id}')
 
 
 # Tag endpoints

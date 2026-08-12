@@ -88,3 +88,17 @@ CREATE TABLE idempotency_lock (
 );
 
 INSERT INTO idempotency_lock (id, enabled) VALUES (1, 0);
+
+CREATE TABLE event_sequence (
+    id    INTEGER NOT NULL DEFAULT 1 CHECK (id = 1) PRIMARY KEY,
+    value BIGINT NOT NULL DEFAULT 0
+);
+
+INSERT INTO event_sequence (id, value) VALUES (1, 0);
+
+CREATE TABLE inventory_events (
+    id          BIGINT NOT NULL PRIMARY KEY,
+    event_type  VARCHAR(64) NOT NULL,
+    data        TEXT NOT NULL,
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
