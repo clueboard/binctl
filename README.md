@@ -183,7 +183,7 @@ host: at [`systemd/binctl-server.service`](systemd/binctl-server.service) in thi
 
 ## Development (uv)
 
-Contributors can use [uv](https://docs.astral.sh/uv/) for a faster workflow. Generate the
+Contributors should use [uv](https://docs.astral.sh/uv/) for a faster workflow. Generate the
 ignored local client first, then install the published `binctl-client` package and other
 development dependencies.
 
@@ -294,6 +294,11 @@ exempt from the lock so it can always be disabled.
 
 Tags are public unique strings matching `[a-z-]+` rather than public IDs. Node write bodies use
 `tags: ["fragile"]`, and missing tags are created atomically with the node mutation.
+
+Clients can initialize their local graph with `GET /v1/snapshot`. The authenticated endpoint
+returns every node, including its parent ID and assigned tag names, in deterministic ID order.
+The snapshot is read from one database statement so concurrent writes cannot produce a mixture
+of graph states. Unattached tags are not included.
 
 ## Troubleshooting
 

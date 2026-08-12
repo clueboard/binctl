@@ -17,6 +17,7 @@ from .db.flask import (
     delete_node,
     delete_tag,
     fetch_children,
+    fetch_graph_snapshot,
     fetch_node,
     fetch_nodes_for_tag,
     fetch_nodes_page,
@@ -171,6 +172,10 @@ def get_config() -> Response:
     return jsonify({'orphan_location': current_app.config.get('ORPHAN_LOCATION')})
 
 
+def get_snapshot() -> Response:
+    return jsonify({'nodes': fetch_graph_snapshot()})
+
+
 # Tag endpoints
 def get_tags_list() -> Response:
     try:
@@ -275,7 +280,12 @@ def get_nodes_list() -> Response:
     total = count_nodes()
     rows = fetch_nodes_page(limit, offset)
 
-    return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': [node_row_to_dict(r) for r in rows]})
+    items = []
+    for row in rows:
+        node = node_row_to_dict(row)
+        node['tags'] = fetch_tags_for_node(row['id'])
+        items.append(node)
+    return jsonify({'total': total, 'limit': limit, 'offset': offset, 'items': items})
 
 
 def get_node_detail(node_id: str) -> Response:
@@ -286,12 +296,11 @@ def get_node_detail(node_id: str) -> Response:
         return error(404, 'Node not found')
 
     parent_id_int = fetch_parent_id(node_id_int)
-    children = fetch_children(node_id_int)
     tags = fetch_tags_for_node(node_id_int)
 
     node = node_row_to_dict(row)
     node['parent_id'] = base62.encode(parent_id_int) if parent_id_int is not None else None
-    node['children'] = children
+    node['children'] = fetch_children(node_id_int)
     node['tags'] = tags
 
     return jsonify(node)

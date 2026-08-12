@@ -70,7 +70,7 @@ class TestNodeGet:
     def test_get_detail_full(self, client, make_node, make_tag, authed_headers):
         container_id = make_node('room', is_container=True)
         child_id = make_node('shelf', is_container=True, parent_id=container_id)
-        grandchild_id = make_node('box', parent_id=child_id)  # noqa: F841
+        grandchild_id = make_node('box', parent_id=child_id)
         make_tag('storage')
         client.patch(f'/v1/nodes/{child_id}', json={'tags': ['storage']}, headers=authed_headers)
 
@@ -79,10 +79,15 @@ class TestNodeGet:
         body = resp.json()
         assert body['id'] == child_id
         assert body['parent_id'] == container_id
+        assert body['tags'] == ['storage']
         assert len(body['children']) == 1
         assert body['children'][0]['id'] == grandchild_id
         assert body['children'][0]['parent_id'] == child_id
-        assert body['tags'] == ['storage']
+        assert body['children'][0]['tags'] == []
+        assert 'children' not in body['children'][0]
+
+        grandchild = client.get(f'/v1/nodes/{grandchild_id}', headers=authed_headers).json()
+        assert grandchild['parent_id'] == child_id
 
     def test_get_not_found(self, client, authed_headers):
         resp = client.get('/v1/nodes/99999', headers=authed_headers)
@@ -129,6 +134,13 @@ class TestNodeList:
         items = {item['id']: item for item in resp.json()['items']}
         assert items[container_id]['parent_id'] is None
         assert items[child_id]['parent_id'] == container_id
+
+    def test_list_uses_full_node_representation(self, client, make_node, authed_headers):
+        node_id = make_node('tagged', tags=['alpha'])
+        response = client.get('/v1/nodes', headers=authed_headers)
+        node = next(item for item in response.json()['items'] if item['id'] == node_id)
+        assert node['tags'] == ['alpha']
+        assert set(node) == {'id', 'label', 'description', 'is_container', 'created_at', 'updated_at', 'parent_id', 'tags'}
 
 
 class TestNodeDeleteUnauthenticated:
@@ -204,10 +216,10 @@ class TestNodeDelete:
         resp = client.get(f'/v1/nodes/{child_id}', headers=authed_headers)
         assert resp.status_code == 404
 
-        # Verify container still exists and doesn't have the child anymore
+        # Verify the container still exists and no longer has the child.
         resp = client.get(f'/v1/nodes/{container_id}', headers=authed_headers)
         assert resp.status_code == 200
-        assert len(resp.json()['children']) == 0
+        assert resp.json()['children'] == []
 
         # Verify tag association is gone (optional, but good for thoroughness)
         resp = client.get(f'/v1/tags/{tag_name}', headers=authed_headers)

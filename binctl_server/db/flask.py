@@ -134,7 +134,7 @@ def fetch_parent_id(node_id: int) -> int | None:
 
 
 def fetch_children(node_id: int) -> list[dict]:
-    """Return serialized dicts for all direct children of *node_id*."""
+    """Return full canonical representations of the direct child nodes."""
     rows = (
         get_db()
         .execute(
@@ -153,7 +153,12 @@ def fetch_children(node_id: int) -> list[dict]:
         .mappings()
         .all()
     )
-    return [node_row_to_dict(r) for r in rows]
+    children = []
+    for row in rows:
+        child = node_row_to_dict(row)
+        child['tags'] = fetch_tags_for_node(row['id'])
+        children.append(child)
+    return children
 
 
 def node_has_children(node_id: int) -> bool:
@@ -318,6 +323,40 @@ def fetch_nodes_page(limit: int, offset: int) -> Sequence[RowMapping]:
         .mappings()
         .all()
     )
+
+
+def fetch_graph_snapshot() -> list[dict]:
+    """Return every node with its parent and tag names from one query."""
+    rows = (
+        get_db()
+        .execute(
+            text(
+                """
+            SELECT n.id, n.label, n.description, n.is_container,
+                   n.created_at, n.updated_at, e.parent_id, t.name AS tag_name
+            FROM nodes n
+            LEFT JOIN edges e ON e.child_id = n.id
+            LEFT JOIN tag_node tn ON tn.node_id = n.id
+            LEFT JOIN tags t ON t.id = tn.tag_id
+            ORDER BY n.id, t.name
+            """
+            )
+        )
+        .mappings()
+        .all()
+    )
+
+    nodes: list[dict] = []
+    current_id = None
+    for row in rows:
+        if row['id'] != current_id:
+            node = node_row_to_dict(row)
+            node['tags'] = []
+            nodes.append(node)
+            current_id = row['id']
+        if row['tag_name'] is not None:
+            nodes[-1]['tags'].append(row['tag_name'])
+    return nodes
 
 
 def create_node(
